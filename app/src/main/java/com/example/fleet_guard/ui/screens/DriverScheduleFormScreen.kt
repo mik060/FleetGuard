@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
@@ -39,12 +40,13 @@ import java.util.*
 fun DriverScheduleFormScreen(
     user: User? = null,
     availableVehicles: List<String> = emptyList(),
-    onSaveClick: (String, String, String, String, String, String) -> Unit = { _, _, _, _, _, _ -> },
+    onSaveClick: (String, String, String, String, String, String, String) -> Unit = { _, _, _, _, _, _, _ -> },
     onBackClick: () -> Unit = {}
 ) {
     var driverName by remember { mutableStateOf(user?.fullName ?: "") }
     var routeName by remember { mutableStateOf("") }
     var destinationName by remember { mutableStateOf("") }
+    var usageReason by remember { mutableStateOf("") }
     var selectedVehicle by remember { mutableStateOf("") }
     var date by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("") }
@@ -169,6 +171,17 @@ fun DriverScheduleFormScreen(
                         )
 
                         OutlinedTextField(
+                            value = usageReason,
+                            onValueChange = { usageReason = it },
+                            label = { Text("Reason for Usage", fontWeight = FontWeight.Bold) },
+                            modifier = Modifier.fillMaxWidth(),
+                            leadingIcon = { Icon(Icons.Default.Description, contentDescription = null, tint = darkBlue) },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = textFieldColors,
+                            placeholder = { Text("e.g. Delivery to Client X") }
+                        )
+
+                        OutlinedTextField(
                             value = routeName,
                             onValueChange = { routeName = it },
                             label = { Text("Route / Start Point", fontWeight = FontWeight.Bold) },
@@ -288,8 +301,8 @@ fun DriverScheduleFormScreen(
 
                         Button(
                             onClick = { 
-                                if (driverName.isNotEmpty() && routeName.isNotEmpty() && destinationName.isNotEmpty() && selectedVehicle.isNotEmpty() && date.isNotEmpty() && time.isNotEmpty()) {
-                                    onSaveClick(driverName, routeName, destinationName, date, time, selectedVehicle)
+                                if (driverName.isNotEmpty() && usageReason.isNotEmpty() && routeName.isNotEmpty() && destinationName.isNotEmpty() && selectedVehicle.isNotEmpty() && date.isNotEmpty() && time.isNotEmpty()) {
+                                    onSaveClick(driverName, routeName, destinationName, date, time, selectedVehicle, usageReason)
                                 } else {
                                     Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
                                 }

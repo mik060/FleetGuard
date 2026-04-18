@@ -10,6 +10,7 @@ data class ScheduleData(
     val driver: String = "",
     val time: String = "",
     val vehicle: String = "Not Assigned",
+    val reason: String = "",
     val userId: String = "",
     val adminId: String? = null,
     val timestamp: Long = System.currentTimeMillis(),

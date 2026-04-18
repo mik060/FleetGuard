@@ -16,7 +16,7 @@
         <!-- Add your Google Maps API Key here -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_API_KEY_HERE" />
+            android:value="AIzaSyA_example_key_replace_with_yours" />
 
         <activity
             android:name=".MainActivity"

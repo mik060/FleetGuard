@@ -34,7 +34,8 @@ fun AvailableVehiclesScreen(
     vehicles: List<Vehicle> = emptyList(),
     onBackClick: () -> Unit = {},
     onVehicleClick: (Vehicle) -> Unit = {},
-    onAddVehicle: (Vehicle) -> Unit = {}
+    onAddVehicle: (Vehicle) -> Unit = {},
+    onDeleteVehicle: (Vehicle) -> Unit = {}
 ) {
     val darkBlue = Color(0xFF004D61)
     val lightBlue = Color(0xFFE0F7FA)
@@ -114,7 +115,12 @@ fun AvailableVehiclesScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(filteredVehicles) { vehicle ->
-                        VehicleCard(vehicle, onClick = { onVehicleClick(vehicle) })
+                        VehicleCard(
+                            vehicle = vehicle, 
+                            onClick = { onVehicleClick(vehicle) },
+                            isAdmin = isAdmin,
+                            onDelete = { onDeleteVehicle(vehicle) }
+                        )
                     }
                 }
             }
@@ -254,13 +260,44 @@ fun AddVehicleDialog(
 }
 
 @Composable
-fun VehicleCard(vehicle: Vehicle, onClick: () -> Unit) {
+fun VehicleCard(
+    vehicle: Vehicle, 
+    onClick: () -> Unit,
+    isAdmin: Boolean = false,
+    onDelete: () -> Unit = {}
+) {
     val statusColor = when (vehicle.status) {
         "Available" -> Color(0xFF43A047)
         "In Use" -> Color(0xFFD32F2F)
         "Returning" -> Color(0xFFF9A825)
         "In Repair" -> Color(0xFF757575)
         else -> Color.Gray
+    }
+
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete Vehicle") },
+            text = { Text("Are you sure you want to remove ${vehicle.model} (${vehicle.plateNumber}) from the fleet?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteConfirm = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
     
     ElevatedCard(
@@ -331,13 +368,32 @@ fun VehicleCard(vehicle: Vehicle, onClick: () -> Unit) {
                         fontSize = 12.sp
                     )
                 }
+                
                 Spacer(modifier = Modifier.height(8.dp))
-                Icon(
-                    Icons.Default.LocationOn, 
-                    contentDescription = "View Map",
-                    tint = Color(0xFF004D61),
-                    modifier = Modifier.size(20.dp)
-                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isAdmin) {
+                        IconButton(
+                            onClick = { showDeleteConfirm = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = Color.Red.copy(alpha = 0.7f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    
+                    Icon(
+                        Icons.Default.LocationOn, 
+                        contentDescription = "View Map",
+                        tint = Color(0xFF004D61),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

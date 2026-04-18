@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -21,7 +21,7 @@ fun FleetMapScreen(
     activeVehicles: List<Vehicle>,
     onBackClick: () -> Unit
 ) {
-    // Default center if no vehicles
+    // Default center if no vehicles (Manila as an example)
     val defaultCenter = LatLng(14.5995, 120.9842)
     val initialLocation = if (activeVehicles.isNotEmpty()) {
         LatLng(activeVehicles[0].latitude, activeVehicles[0].longitude)
@@ -38,7 +38,7 @@ fun FleetMapScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Live Fleet Tracking",
+                        text = "Fleet Route View",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = Color.White
                     )
@@ -59,7 +59,13 @@ fun FleetMapScreen(
                 .fillMaxSize()
                 .padding(paddingValues),
             cameraPositionState = cameraPositionState,
-            uiSettings = MapUiSettings(zoomControlsEnabled = true)
+            uiSettings = MapUiSettings(
+                zoomControlsEnabled = true,
+                scrollGesturesEnabled = true,
+                zoomGesturesEnabled = true,
+                tiltGesturesEnabled = false,
+                rotationGesturesEnabled = false
+            )
         ) {
             activeVehicles.forEach { vehicle ->
                 val markerColor = when (vehicle.status) {
@@ -71,7 +77,7 @@ fun FleetMapScreen(
                 Marker(
                     state = MarkerState(position = LatLng(vehicle.latitude, vehicle.longitude)),
                     title = "${vehicle.model} (${vehicle.plateNumber})",
-                    snippet = "Status: ${vehicle.status}",
+                    snippet = "Route view for ${vehicle.model}",
                     icon = BitmapDescriptorFactory.defaultMarker(markerColor)
                 )
             }

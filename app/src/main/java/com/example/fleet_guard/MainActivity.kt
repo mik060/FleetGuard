@@ -630,7 +630,7 @@ fun AppNavigation() {
                 DriverScheduleFormScreen(
                     user = loggedInUser,
                     availableVehicles = availableVehicleList,
-                    onSaveClick = { driver, route, destination, date, time, vehicle ->
+                    onSaveClick = { driver, route, destination, date, time, vehicle, reason ->
                         val uid = auth.currentUser?.uid ?: ""
                         val adminId = loggedInUser?.adminId
                         
@@ -642,6 +642,7 @@ fun AppNavigation() {
                             driver = driver,
                             time = time,
                             vehicle = vehicle,
+                            reason = reason,
                             userId = uid,
                             adminId = adminId,
                             isReached = false,
@@ -688,6 +689,16 @@ fun AppNavigation() {
                                 Toast.makeText(context, "Vehicle Added to Fleet", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Failed to add vehicle: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    },
+                    onDeleteVehicle = { vehicle ->
+                        scope.launch {
+                            try {
+                                firestore.collection("vehicles").document(vehicle.id).delete().await()
+                                Toast.makeText(context, "Vehicle removed from fleet", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Failed to delete: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
