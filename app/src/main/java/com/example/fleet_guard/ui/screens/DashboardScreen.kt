@@ -58,8 +58,6 @@ fun DashboardScreen(
     onSettingsClick: () -> Unit = {},
     onReachedDestination: (ScheduleData) -> Unit = { _ -> },
     onLocationUpdate: (String, Double, Double) -> Unit = { _, _, _ -> },
-    onAcceptUser: (User) -> Unit = {},
-    onRejectUser: (User) -> Unit = {},
     onApproveSchedule: (ScheduleData) -> Unit = {},
     onRejectSchedule: (ScheduleData) -> Unit = {},
     pendingUsers: List<User> = emptyList(),
@@ -166,14 +164,15 @@ fun DashboardScreen(
             onDismissRequest = { scheduleToShowInfo = null },
             title = { Text("Schedule Information", fontWeight = FontWeight.Bold) },
             text = {
+                val info = scheduleToShowInfo
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DashboardDetailRow(icon = Icons.Default.Person, label = "Driver", value = scheduleToShowInfo?.driver ?: "")
-                    DashboardDetailRow(icon = Icons.Default.DirectionsCar, label = "Vehicle", value = scheduleToShowInfo?.vehicle ?: "")
-                    DashboardDetailRow(icon = Icons.Default.Route, label = "Route", value = scheduleToShowInfo?.route ?: "")
-                    DashboardDetailRow(icon = Icons.Default.LocationOn, label = "Destination", value = scheduleToShowInfo?.destination ?: "")
-                    DashboardDetailRow(icon = Icons.Default.CalendarToday, label = "Date", value = scheduleToShowInfo?.date ?: "")
-                    DashboardDetailRow(icon = Icons.Default.Schedule, label = "Time", value = scheduleToShowInfo?.time ?: "")
-                    DashboardDetailRow(icon = Icons.Default.Info, label = "Status", value = scheduleToShowInfo?.status ?: "PENDING")
+                    DashboardDetailRow(icon = Icons.Default.Person, label = "Driver", value = info?.driver ?: "")
+                    DashboardDetailRow(icon = Icons.Default.DirectionsCar, label = "Vehicle", value = info?.vehicle ?: "")
+                    DashboardDetailRow(icon = Icons.Default.Route, label = "Route", value = info?.route ?: "")
+                    DashboardDetailRow(icon = Icons.Default.LocationOn, label = "Destination", value = info?.destination ?: "")
+                    DashboardDetailRow(icon = Icons.Default.CalendarToday, label = "Date", value = info?.date ?: "")
+                    DashboardDetailRow(icon = Icons.Default.Schedule, label = "Time", value = info?.time ?: "")
+                    DashboardDetailRow(icon = Icons.Default.Info, label = "Status", value = info?.status ?: "PENDING")
                 }
             },
             confirmButton = {
@@ -212,9 +211,6 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onProfileClick) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile", tint = Color.White, modifier = Modifier.size(32.dp))
-                    }
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White)
                     }
@@ -287,105 +283,82 @@ fun DashboardScreen(
                 }
             }
 
-            // Admin Shared Row: Pending Approvals & Global Trip Logs
+            // Admin Dashboard: Fleet Schedules (Global Trip Logs moved to History)
             if (isAdmin) {
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        // Pending Approvals Section
-                        val pendingRequests = schedules.filter { it.status == "PENDING" }
-                        Column(modifier = Modifier.weight(1f)) {
-                            ModernDashboardSection(
-                                title = "Pending (${pendingRequests.size})",
-                                icon = Icons.Default.FactCheck
-                            ) {
-                                if (pendingRequests.isEmpty()) {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                                        contentAlignment = Alignment.Center
+                val fleetSchedules = schedules.filter { it.status != "PENDING" }
+                if (fleetSchedules.isNotEmpty()) {
+                    item {
+                        ModernDashboardSection(
+                            title = "Active Fleet Schedules",
+                            icon = Icons.AutoMirrored.Filled.EventNote
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                fleetSchedules.take(10).forEach { item ->
+                                    val isScheduledTimeReached = try {
+                                        val scheduleDate = dateFormat.parse("${item.date} ${item.time}")
+                                        scheduleDate != null && currentTime.after(scheduleDate)
+                                    } catch (e: Exception) { false }
+                                    val isActive = isScheduledTimeReached && !item.isReached && item.status == "APPROVED"
+
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (isActive) Color(0xFFE1F5FE) else Color.White
+                                        ),
+                                        shape = RoundedCornerShape(12.dp),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                                     ) {
-                                        Text("No pending requests", color = Color.Gray, fontSize = 12.sp)
-                                    }
-                                } else {
-                                    Column(modifier = Modifier.padding(4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        pendingRequests.take(3).forEach { item ->
-                                            Card(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
-                                                shape = RoundedCornerShape(8.dp),
-                                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                            ) {
-                                                Column(modifier = Modifier.padding(8.dp)) {
-                                                    Text(item.route, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
-                                                    Text(item.driver, color = Color.Gray, fontSize = 10.sp, maxLines = 1)
-                                                    Spacer(modifier = Modifier.height(4.dp))
-                                                    
-                                                    // Added detailed info to Pending section
-                                                    Text("Vehicle: ${item.vehicle}", fontSize = 9.sp, color = darkBlue)
-                                                    Text("Date: ${item.date}", fontSize = 9.sp, color = Color.Gray)
-                                                    
-                                                    Spacer(modifier = Modifier.height(6.dp))
-                                                    Row(
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        horizontalArrangement = Arrangement.SpaceEvenly
+                                        Column(modifier = Modifier.padding(12.dp)) {
+                                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        "${item.route} -> ${item.destination}", 
+                                                        fontWeight = FontWeight.Bold, 
+                                                        fontSize = 16.sp,
+                                                        color = if (isActive) Color(0xFF0277BD) else Color.Black
+                                                    )
+                                                    Text(item.driver, color = Color.Gray, fontSize = 14.sp)
+                                                    Text(
+                                                        "Vehicle: ${item.vehicle}", 
+                                                        color = if (isActive) Color(0xFF0277BD) else darkBlue, 
+                                                        fontSize = 12.sp, 
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                                Column(horizontalAlignment = Alignment.End) {
+                                                    Text(
+                                                        item.time, 
+                                                        fontWeight = FontWeight.Bold, 
+                                                        color = if (isActive) Color(0xFF0277BD) else Color(0xFF004D61)
+                                                    )
+                                                    Text(item.date, fontSize = 12.sp, color = Color.Gray)
+                                                    OutlinedButton(
+                                                        onClick = { scheduleToShowInfo = item }, 
+                                                        modifier = Modifier.padding(top = 4.dp).height(32.dp), 
+                                                        contentPadding = PaddingValues(horizontal = 8.dp), 
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        colors = if (isActive) ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0277BD)) else ButtonDefaults.outlinedButtonColors()
                                                     ) {
-                                                        Button(
-                                                            onClick = { onApproveSchedule(item) },
-                                                            modifier = Modifier.height(28.dp).weight(1f),
-                                                            contentPadding = PaddingValues(0.dp),
-                                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF43A047)),
-                                                            shape = RoundedCornerShape(4.dp)
-                                                        ) { Text("OK", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                                                        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(14.dp))
                                                         Spacer(modifier = Modifier.width(4.dp))
-                                                        Button(
-                                                            onClick = { onRejectSchedule(item) },
-                                                            modifier = Modifier.height(28.dp).weight(1f),
-                                                            contentPadding = PaddingValues(0.dp),
-                                                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                                                            shape = RoundedCornerShape(4.dp)
-                                                        ) { Text("REJECT", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+                                                        Text("INFO", fontSize = 10.sp)
                                                     }
                                                 }
                                             }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Global Trip Logs Section
-                        Column(modifier = Modifier.weight(1f)) {
-                            ModernDashboardSection(
-                                title = "Trip Logs",
-                                icon = Icons.Default.Map
-                            ) {
-                                if (tripHistory.isEmpty()) {
-                                    Box(
-                                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("No recent trips", color = Color.Gray, fontSize = 12.sp)
-                                    }
-                                } else {
-                                    Column(modifier = Modifier.padding(4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        tripHistory.take(3).forEach { trip ->
-                                            Card(
-                                                modifier = Modifier.fillMaxWidth().clickable { onTripClick(trip) },
-                                                colors = CardDefaults.cardColors(containerColor = Color.White),
-                                                shape = RoundedCornerShape(8.dp),
-                                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                                            ) {
-                                                Column(modifier = Modifier.padding(8.dp)) {
-                                                    Text(trip.route, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
-                                                    Text(trip.driver, color = Color.Gray, fontSize = 10.sp, maxLines = 1)
-                                                    Text(
-                                                        trip.status, 
-                                                        color = if (trip.status == "Returned") Color(0xFF43A047) else Color(0xFFF9A825), 
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
+                                            if (isActive) {
+                                                Surface(
+                                                    modifier = Modifier.padding(top = 8.dp),
+                                                    color = Color(0xFF0277BD).copy(alpha = 0.1f),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Icon(Icons.Default.MotionPhotosAuto, contentDescription = null, tint = Color(0xFF0277BD), modifier = Modifier.size(12.dp))
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text("IN PROGRESS", color = Color(0xFF0277BD), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                    }
                                                 }
                                             }
                                         }
@@ -395,14 +368,11 @@ fun DashboardScreen(
                         }
                     }
                 }
-            }
-
-            // For non-admin, keep the separated sections as requested before
-            if (!isAdmin) {
-                // Trip Logs Section - Above Schedules for Users
+            } else {
+                // User Dashboard: Trip Logs & Personal Schedules
                 item {
                     ModernDashboardSection(
-                        title = "Recent Trip Logs",
+                        title = "Your Recent Trip Logs",
                         icon = Icons.Default.Map
                     ) {
                         if (tripHistory.isEmpty()) {
@@ -445,7 +415,6 @@ fun DashboardScreen(
                     }
                 }
 
-                // Driver Schedule Section
                 if (schedules.isNotEmpty()) {
                     item {
                         ModernDashboardSection(
@@ -481,46 +450,6 @@ fun DashboardScreen(
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Button(onClick = { scheduleToConfirm = item }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color.Red), shape = RoundedCornerShape(8.dp)) {
                                                     Text("REACHED DESTINATION", fontWeight = FontWeight.Bold, color = Color.White)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Admin Fleet Schedules Section (Restored as requested)
-                val fleetSchedules = schedules.filter { it.status != "PENDING" }
-                if (fleetSchedules.isNotEmpty()) {
-                    item {
-                        ModernDashboardSection(
-                            title = "Fleet Schedules",
-                            icon = Icons.AutoMirrored.Filled.EventNote
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                fleetSchedules.take(10).forEach { item ->
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                        shape = RoundedCornerShape(12.dp),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text("${item.route} -> ${item.destination}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                                    Text(item.driver, color = Color.Gray, fontSize = 14.sp)
-                                                    Text("Vehicle: ${item.vehicle}", color = darkBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                }
-                                                Column(horizontalAlignment = Alignment.End) {
-                                                    Text(item.time, fontWeight = FontWeight.Medium, color = Color(0xFF004D61))
-                                                    Text(item.date, fontSize = 12.sp, color = Color.Gray)
-                                                    OutlinedButton(onClick = { scheduleToShowInfo = item }, modifier = Modifier.padding(top = 4.dp).height(32.dp), contentPadding = PaddingValues(horizontal = 8.dp), shape = RoundedCornerShape(8.dp)) {
-                                                        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(14.dp))
-                                                        Spacer(modifier = Modifier.width(4.dp))
-                                                        Text("INFO", fontSize = 10.sp)
-                                                    }
                                                 }
                                             }
                                         }
@@ -574,19 +503,6 @@ fun ModernStatusCard(
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text("VIEW", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                val num = count.toIntOrNull() ?: 0
-                repeat(if (num > 5) 5 else num) {
-                    Icon(
-                        icon, 
-                        contentDescription = null, 
-                        tint = color.copy(alpha = 0.3f), 
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
             }
         }
     }
