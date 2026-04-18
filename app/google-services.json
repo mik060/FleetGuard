@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "17092266657",
+    "project_id": "fleetguard-e4d8d",
+    "storage_bucket": "fleetguard-e4d8d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:17092266657:android:900d067fbcebd567b33ee0",
+        "android_client_info": {
+          "package_name": "com.example.fleet_guard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSK2-odNyrLpHCLzK-cw7GRfiRDslXi60"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

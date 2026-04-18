@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Fleet_Guard</string>
+    <string name="title_activity_dashboard">dashboard</string>
+    <string name="title_activity_mydashboard">mydashboard</string>
+</resources>
