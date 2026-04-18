@@ -71,6 +71,7 @@ fun AppNavigation() {
     var firebaseUser by remember { mutableStateOf(auth.currentUser) }
     var loggedInUser by remember { mutableStateOf<User?>(null) }
     var isLoggingIn by remember { mutableStateOf(false) }
+    var isAccountPending by remember { mutableStateOf(false) }
 
     DisposableEffect(auth) {
         val listener = FirebaseAuth.AuthStateListener {
@@ -95,16 +96,24 @@ fun AppNavigation() {
                         val status = snapshot.getString("connectionStatus")
                         val isAdmin = snapshot.getBoolean("isAdmin") ?: false
                         
-                        loggedInUser = User(
-                            fullName = snapshot.getString("fullName") ?: "",
-                            email = snapshot.getString("email") ?: "",
-                            password = "",
-                            isAdmin = isAdmin,
-                            adminId = snapshot.getString("adminId"),
-                            connectionStatus = status ?: "ACCEPTED"
-                        )
+                        if (status == "PENDING" && !isAdmin) {
+                            isAccountPending = true
+                            loggedInUser = null
+                            auth.signOut()
+                        } else {
+                            isAccountPending = false
+                            loggedInUser = User(
+                                fullName = snapshot.getString("fullName") ?: "",
+                                email = snapshot.getString("email") ?: "",
+                                password = "",
+                                isAdmin = isAdmin,
+                                adminId = snapshot.getString("adminId"),
+                                connectionStatus = status
+                            )
+                        }
                     } else {
                         loggedInUser = null
+                        isAccountPending = false
                     }
                 }
         } else {
@@ -189,7 +198,7 @@ fun AppNavigation() {
     }.collectAsState(initial = emptyList())
 
     val vehicles by remember(loggedInUser) {
-        if (loggedInUser == null || loggedInUser?.adminId.isNullOrEmpty() || loggedInUser?.connectionStatus != "ACCEPTED") {
+        if (loggedInUser == null || loggedInUser?.adminId == null) {
             flowOf(emptyList())
         } else {
             callbackFlow {
@@ -280,6 +289,19 @@ fun AppNavigation() {
                 Toast.makeText(context, "Failed to reject: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    if (isAccountPending) {
+        AlertDialog(
+            onDismissRequest = { isAccountPending = false },
+            title = { Text("Account Pending", fontWeight = FontWeight.Bold) },
+            text = { Text("Your registration is still awaiting approval from the Fleet Admin. Please try again later.") },
+            confirmButton = {
+                Button(onClick = { isAccountPending = false }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -379,8 +401,8 @@ fun AppNavigation() {
             }
             composable("registration") {
                 RegistrationScreen(
-                    onRegisterClick = { fullName, email, password, confirmPassword, _ ->
-                        if (password == confirmPassword && fullName.isNotEmpty() && email.isNotEmpty()) {
+                    onRegisterClick = { fullName, email, password, confirmPassword, fleetId ->
+                        if (password == confirmPassword && fullName.isNotEmpty() && email.isNotEmpty() && fleetId.isNotEmpty()) {
                             isLoggingIn = true
                             scope.launch {
                                 try {
@@ -391,11 +413,15 @@ fun AppNavigation() {
                                             "fullName" to fullName,
                                             "email" to email,
                                             "isAdmin" to false,
-                                            "adminId" to "",
-                                            "connectionStatus" to "ACCEPTED"
+                                            "adminId" to fleetId,
+                                            "connectionStatus" to "PENDING"
                                         )
                                         firestore.collection("users").document(uid).set(userData).await()
-                                        Toast.makeText(context, "Registration Successful!", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, "Registration Successful. Awaiting Admin Approval.", Toast.LENGTH_LONG).show()
+                                        auth.signOut()
+                                        navController.navigate("login") {
+                                            popUpTo("registration") { inclusive = true }
+                                        }
                                     }
                                 } catch (e: Exception) {
                                     Toast.makeText(context, "Registration Failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -404,7 +430,7 @@ fun AppNavigation() {
                                 }
                             }
                         } else {
-                            Toast.makeText(context, "Please check your inputs", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Please check your inputs and ensure Fleet ID is provided", Toast.LENGTH_SHORT).show()
                         }
                     },
                     onBackToLogin = {
@@ -451,11 +477,7 @@ fun AppNavigation() {
                 DashboardScreen(
                     user = loggedInUser,
                     onAddClick = {
-                        if (loggedInUser?.adminId.isNullOrEmpty() || loggedInUser?.connectionStatus == "PENDING") {
-                            navController.navigate("add_admin")
-                        } else {
-                            navController.navigate("schedule_form")
-                        }
+                        navController.navigate("schedule_form")
                     },
                     onTripLogClick = {
                         navController.navigate("trip_summary")
@@ -521,36 +543,13 @@ fun AppNavigation() {
                     vehicles = vehicles
                 )
             }
-            composable("add_admin") {
-                AddAdminScreen(
-                    onAddClick = { adminId ->
-                        val uid = auth.currentUser?.uid
-                        if (uid != null) {
-                            scope.launch {
-                                try {
-                                    firestore.collection("users").document(uid)
-                                        .update(
-                                            "adminId", adminId,
-                                            "connectionStatus", "PENDING"
-                                        ).await()
-                                    Toast.makeText(context, "Request sent to Admin!", Toast.LENGTH_SHORT).show()
-                                    navController.popBackStack()
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }
-                    },
-                    onBackClick = { navController.popBackStack() }
-                )
-            }
             composable("pending_approvals") {
                 PendingApprovalsScreen(
                     pendingUsers = pendingUsers,
                     onAcceptUser = { user ->
                         scope.launch {
                             try {
-                                firestore.collection("users").document(user.password) // doc.id is stored in password
+                                firestore.collection("users").document(user.password) 
                                     .update("connectionStatus", "ACCEPTED").await()
                                 Toast.makeText(context, "User accepted!", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
@@ -561,13 +560,8 @@ fun AppNavigation() {
                     onRejectUser = { user ->
                         scope.launch {
                             try {
-                                // Clear their admin request on reject
-                                firestore.collection("users").document(user.password)
-                                    .update(
-                                        "adminId", "",
-                                        "connectionStatus", "ACCEPTED" // Back to standalone accepted state
-                                    ).await()
-                                Toast.makeText(context, "User request rejected.", Toast.LENGTH_SHORT).show()
+                                firestore.collection("users").document(user.password).delete().await()
+                                Toast.makeText(context, "User rejected.", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                             }

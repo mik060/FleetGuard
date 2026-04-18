@@ -7,7 +7,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -37,7 +36,6 @@ fun RegistrationScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var fleetId by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     val darkBlue = Color(0xFF004D61)
@@ -118,19 +116,6 @@ fun RegistrationScreen(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    
-                    OutlinedTextField(
-                        value = fleetId,
-                        onValueChange = { fleetId = it },
-                        label = { Text("Fleet ID (Provided by Admin)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null, tint = darkBlue) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
 
                     OutlinedTextField(
                         value = password,
@@ -172,7 +157,7 @@ fun RegistrationScreen(
                     Spacer(modifier = Modifier.height(32.dp))
 
                     Button(
-                        onClick = { onRegisterClick(fullName, email, password, confirmPassword, fleetId) },
+                        onClick = { onRegisterClick(fullName, email, password, confirmPassword, "") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),

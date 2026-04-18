@@ -232,7 +232,8 @@ fun DashboardScreen(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("NEW ENTRY", fontWeight = FontWeight.Bold)
+                    val isConnected = !user?.adminId.isNullOrEmpty() && user?.connectionStatus == "ACCEPTED"
+                    Text(if (isConnected) "NEW ENTRY" else "CONNECT TO FLEET", fontWeight = FontWeight.Bold)
                 }
             }
         },
@@ -246,6 +247,9 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
             contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
         ) {
+            val isConnected = !user?.adminId.isNullOrEmpty() && user?.connectionStatus == "ACCEPTED"
+            val isPending = !user?.adminId.isNullOrEmpty() && user?.connectionStatus == "PENDING"
+
             if (isAdmin) {
                 item {
                     Text(
@@ -256,35 +260,32 @@ fun DashboardScreen(
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                 }
-            }
-
-            // Status Cards Row
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    ModernStatusCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Default.DirectionsCar,
-                        count = availableCount,
-                        label = "Available",
-                        color = Color(0xFF43A047),
-                        onClick = { onViewVehiclesClick("Available") }
-                    )
-                    ModernStatusCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Default.Build,
-                        count = inRepairCount,
-                        label = "In Repair",
-                        color = accentRed,
-                        onClick = { onViewVehiclesClick("In Repair") }
-                    )
+                
+                // Status Cards Row
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        ModernStatusCard(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.DirectionsCar,
+                            count = availableCount,
+                            label = "Available",
+                            color = Color(0xFF43A047),
+                            onClick = { onViewVehiclesClick("Available") }
+                        )
+                        ModernStatusCard(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.Build,
+                            count = inRepairCount,
+                            label = "In Repair",
+                            color = accentRed,
+                            onClick = { onViewVehiclesClick("In Repair") }
+                        )
+                    }
                 }
-            }
 
-            // Admin Dashboard: Fleet Schedules (Global Trip Logs moved to History)
-            if (isAdmin) {
                 val fleetSchedules = schedules.filter { it.status != "PENDING" }
                 if (fleetSchedules.isNotEmpty()) {
                     item {
@@ -368,50 +369,61 @@ fun DashboardScreen(
                         }
                     }
                 }
-            } else {
-                // User Dashboard: Trip Logs & Personal Schedules
+            } else if (!isConnected) {
+                // User Dashboard: Not connected yet
                 item {
-                    ModernDashboardSection(
-                        title = "Your Recent Trip Logs",
-                        icon = Icons.Default.Map
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (tripHistory.isEmpty()) {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().height(120.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(32.dp), tint = Color.LightGray)
-                                    Text("No recent trips recorded", color = Color.Gray, fontSize = 14.sp)
-                                }
-                            }
-                        } else {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                tripHistory.take(3).forEachIndexed { index, trip ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().clickable { onTripClick(trip) }.padding(vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            modifier = Modifier.size(40.dp).background(if (trip.status == "Returned") Color(0xFF43A047).copy(alpha = 0.1f) else Color(0xFFF9A825).copy(alpha = 0.1f), CircleShape),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(if (trip.status == "Returned") Icons.Default.CheckCircle else Icons.Default.MotionPhotosAuto, contentDescription = null, tint = if (trip.status == "Returned") Color(0xFF43A047) else Color(0xFFF9A825), modifier = Modifier.size(20.dp))
-                                        }
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text("${trip.route} -> ${trip.destination}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                            Text("${trip.driver} • ${trip.vehicle}", color = Color.Gray, fontSize = 12.sp)
-                                        }
-                                        Column(horizontalAlignment = Alignment.End) {
-                                            Text(trip.date, fontSize = 11.sp, color = Color.Gray)
-                                            Text(trip.status, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (trip.status == "Returned") Color(0xFF43A047) else Color(0xFFF9A825))
-                                        }
-                                    }
-                                    if (index < minOf(tripHistory.size, 3) - 1) { HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f)) }
-                                }
-                            }
-                        }
+                        Icon(
+                            imageVector = if (isPending) Icons.Default.HourglassEmpty else Icons.Default.Handshake,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = darkBlue.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = if (isPending) "Connection Request Pending" else "Welcome to FleetGuard",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = darkBlue
+                        )
+                        Text(
+                            text = if (isPending) 
+                                "Your request has been sent to the Admin. Please wait for their approval to access fleet details." 
+                                else "Get started by connecting to a fleet to manage your schedules and track vehicles.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+            } else {
+                // User Dashboard: Connected
+                // Status Cards Row
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        ModernStatusCard(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.DirectionsCar,
+                            count = availableCount,
+                            label = "Available",
+                            color = Color(0xFF43A047),
+                            onClick = { onViewVehiclesClick("Available") }
+                        )
+                        ModernStatusCard(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.Build,
+                            count = inRepairCount,
+                            label = "In Repair",
+                            color = accentRed,
+                            onClick = { onViewVehiclesClick("In Repair") }
+                        )
                     }
                 }
 
