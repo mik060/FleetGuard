@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material3.*
@@ -125,7 +124,7 @@ fun AppNavigation() {
             }
         } else if (firebaseUser == null) {
             // When completely logged out, ensure we are on login screen
-            val restrictedRoutes = listOf("dashboard", "fleet_map", "trip_summary", "profile", "pending_approvals")
+            val restrictedRoutes = listOf("dashboard", "trip_summary", "profile", "pending_approvals")
             if (restrictedRoutes.any { currentRoute?.startsWith(it) == true }) {
                 navController.navigate("login") {
                     popUpTo(0) { inclusive = true }
@@ -286,7 +285,6 @@ fun AppNavigation() {
         bottomBar = {
             val showBottomBar = currentRoute != null && (
                 currentRoute == "dashboard" || 
-                currentRoute == "fleet_map" || 
                 currentRoute.startsWith("trip_summary") || 
                 currentRoute == "profile" ||
                 currentRoute == "pending_approvals"
@@ -298,7 +296,6 @@ fun AppNavigation() {
                 ) {
                     val navItems = mutableListOf(
                         Triple("Dashboard", "dashboard", Icons.Default.Dashboard),
-                        Triple("Fleet Map", "fleet_map", Icons.Default.Map),
                         Triple("History", "trip_summary", Icons.Default.History)
                     )
                     
@@ -485,6 +482,10 @@ fun AppNavigation() {
                             destination = schedule.destination,
                             vehicle = schedule.vehicle,
                             date = schedule.date,
+                            startLat = schedule.startLat,
+                            startLng = schedule.startLng,
+                            destLat = schedule.destLat,
+                            destLng = schedule.destLng,
                             mileage = "${(50..300).random()} km",
                             status = "Returning",
                             userId = uid,
@@ -581,13 +582,6 @@ fun AppNavigation() {
                     }
                 )
             }
-            composable("fleet_map") {
-                val activeVehicles = vehicles.filter { it.status == "In Use" || it.status == "Returning" }
-                FleetMapScreen(
-                    activeVehicles = activeVehicles,
-                    onBackClick = { navController.popBackStack() }
-                )
-            }
             composable(
                 route = "trip_summary?tripId={tripId}",
                 arguments = listOf(navArgument("tripId") { 
@@ -630,7 +624,7 @@ fun AppNavigation() {
                 DriverScheduleFormScreen(
                     user = loggedInUser,
                     availableVehicles = availableVehicleList,
-                    onSaveClick = { driver, route, destination, date, time, vehicle, reason ->
+                    onSaveClick = { driver, route, destination, date, time, vehicle, reason, sLat, sLng, dLat, dLng ->
                         val uid = auth.currentUser?.uid ?: ""
                         val adminId = loggedInUser?.adminId
                         
@@ -643,6 +637,10 @@ fun AppNavigation() {
                             time = time,
                             vehicle = vehicle,
                             reason = reason,
+                            startLat = sLat,
+                            startLng = sLng,
+                            destLat = dLat,
+                            destLng = dLng,
                             userId = uid,
                             adminId = adminId,
                             isReached = false,
@@ -711,8 +709,13 @@ fun AppNavigation() {
                 val vehicleId = backStackEntry.arguments?.getString("vehicleId")
                 val vehicle = vehicles.find { it.id == vehicleId }
                 if (vehicle != null) {
+                    val activeSchedule = schedules.find { 
+                        it.vehicle == "${vehicle.model} (${vehicle.plateNumber})" && 
+                        it.status == "APPROVED" && !it.isReached 
+                    }
                     VehicleMapScreen(
                         vehicle = vehicle,
+                        activeSchedule = activeSchedule,
                         onBackClick = { navController.popBackStack() }
                     )
                 }

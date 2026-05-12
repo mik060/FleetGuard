@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material3.*
@@ -134,7 +133,7 @@ fun AppNavigation() {
             }
         } else if (firebaseUser == null) {
             // When completely logged out, ensure we are on login screen
-            val restrictedRoutes = listOf("dashboard", "fleet_map", "trip_summary", "profile", "pending_approvals")
+            val restrictedRoutes = listOf("dashboard", "trip_summary", "profile", "pending_approvals")
             if (restrictedRoutes.any { currentRoute?.startsWith(it) == true }) {
                 navController.navigate("login") {
                     popUpTo(0) { inclusive = true }
@@ -308,7 +307,6 @@ fun AppNavigation() {
         bottomBar = {
             val showBottomBar = currentRoute != null && (
                 currentRoute == "dashboard" || 
-                currentRoute == "fleet_map" || 
                 currentRoute.startsWith("trip_summary") || 
                 currentRoute == "profile" ||
                 currentRoute == "pending_approvals"
@@ -320,7 +318,6 @@ fun AppNavigation() {
                 ) {
                     val navItems = mutableListOf(
                         Triple("Dashboard", "dashboard", Icons.Default.Dashboard),
-                        Triple("Fleet Map", "fleet_map", Icons.Default.Map),
                         Triple("History", "trip_summary", Icons.Default.History)
                     )
                     
@@ -573,13 +570,6 @@ fun AppNavigation() {
                     onBackClick = {
                         navController.popBackStack()
                     }
-                )
-            }
-            composable("fleet_map") {
-                val activeVehicles = vehicles.filter { it.status == "In Use" || it.status == "Returning" }
-                FleetMapScreen(
-                    activeVehicles = activeVehicles,
-                    onBackClick = { navController.popBackStack() }
                 )
             }
             composable(

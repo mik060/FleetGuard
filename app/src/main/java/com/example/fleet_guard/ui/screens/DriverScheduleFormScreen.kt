@@ -40,7 +40,7 @@ import java.util.*
 fun DriverScheduleFormScreen(
     user: User? = null,
     availableVehicles: List<String> = emptyList(),
-    onSaveClick: (String, String, String, String, String, String, String) -> Unit = { _, _, _, _, _, _, _ -> },
+    onSaveClick: (String, String, String, String, String, String, String, Double, Double, Double, Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> },
     onBackClick: () -> Unit = {}
 ) {
     var driverName by remember { mutableStateOf(user?.fullName ?: "") }
@@ -302,7 +302,13 @@ fun DriverScheduleFormScreen(
                         Button(
                             onClick = { 
                                 if (driverName.isNotEmpty() && usageReason.isNotEmpty() && routeName.isNotEmpty() && destinationName.isNotEmpty() && selectedVehicle.isNotEmpty() && date.isNotEmpty() && time.isNotEmpty()) {
-                                    onSaveClick(driverName, routeName, destinationName, date, time, selectedVehicle, usageReason)
+                                    // Simulated coordinates for demo purposes
+                                    val startLat = 14.5995 + (Random().nextDouble() * 0.01)
+                                    val startLng = 120.9842 + (Random().nextDouble() * 0.01)
+                                    val destLat = 14.6091 + (Random().nextDouble() * 0.05)
+                                    val destLng = 121.0223 + (Random().nextDouble() * 0.05)
+                                    
+                                    onSaveClick(driverName, routeName, destinationName, date, time, selectedVehicle, usageReason, startLat, startLng, destLat, destLng)
                                 } else {
                                     Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
                                 }

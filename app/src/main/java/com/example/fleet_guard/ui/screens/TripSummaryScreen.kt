@@ -23,6 +23,7 @@ import com.example.fleet_guard.data.User
 import com.example.fleet_guard.data.Vehicle
 import com.example.fleet_guard.data.TripRecord
 import com.example.fleet_guard.ui.theme.Fleet_GuardTheme
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
@@ -187,11 +188,39 @@ fun TripSummaryScreen(
                             cameraPositionState = cameraPositionState,
                             uiSettings = MapUiSettings(zoomControlsEnabled = true)
                         ) {
+                            if (currentTrip != null) {
+                                // Start Point Marker
+                                Marker(
+                                    state = MarkerState(position = LatLng(currentTrip.startLat, currentTrip.startLng)),
+                                    title = "Start: ${currentTrip.route}",
+                                    icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_AZURE)
+                                )
+
+                                // Destination Point Marker
+                                Marker(
+                                    state = MarkerState(position = LatLng(currentTrip.destLat, currentTrip.destLng)),
+                                    title = "Destination: ${currentTrip.destination}",
+                                    icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_RED)
+                                )
+
+                                // Route Path (Polyline)
+                                Polyline(
+                                    points = listOf(
+                                        LatLng(currentTrip.startLat, currentTrip.startLng),
+                                        LatLng(currentTrip.destLat, currentTrip.destLng)
+                                    ),
+                                    color = Color(0xFF004D61),
+                                    width = 10f
+                                )
+                            }
+
                             if (vehicle != null) {
+                                // Live Vehicle Marker
                                 Marker(
                                     state = MarkerState(position = LatLng(vehicle.latitude, vehicle.longitude)),
-                                    title = vehicle.model,
-                                    snippet = "Driver: ${selectedTrip?.driver}"
+                                    title = "Current Location: ${vehicle.model}",
+                                    snippet = "Driver: ${selectedTrip?.driver}",
+                                    icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_YELLOW)
                                 )
                             }
                         }

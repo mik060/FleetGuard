@@ -18,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.fleet_guard.data.Vehicle
+import com.example.fleet_guard.data.ScheduleData
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
@@ -26,6 +28,7 @@ import com.google.maps.android.compose.*
 @Composable
 fun VehicleMapScreen(
     vehicle: Vehicle,
+    activeSchedule: ScheduleData? = null,
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -88,10 +91,37 @@ fun VehicleMapScreen(
                     myLocationButtonEnabled = locationPermissionGranted
                 )
             ) {
+                if (activeSchedule != null) {
+                    // Start Point Marker
+                    Marker(
+                        state = MarkerState(position = LatLng(activeSchedule.startLat, activeSchedule.startLng)),
+                        title = "Start: ${activeSchedule.route}",
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                    )
+
+                    // Destination Point Marker
+                    Marker(
+                        state = MarkerState(position = LatLng(activeSchedule.destLat, activeSchedule.destLng)),
+                        title = "Destination: ${activeSchedule.destination}",
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+                    )
+
+                    // Route Path (Polyline)
+                    Polyline(
+                        points = listOf(
+                            LatLng(activeSchedule.startLat, activeSchedule.startLng),
+                            LatLng(activeSchedule.destLat, activeSchedule.destLng)
+                        ),
+                        color = Color(0xFF004D61),
+                        width = 10f
+                    )
+                }
+
                 Marker(
                     state = MarkerState(position = vehicleLocation),
-                    title = vehicle.model,
-                    snippet = "Status: ${vehicle.status}"
+                    title = "Vehicle: ${vehicle.model}",
+                    snippet = "Status: ${vehicle.status}",
+                    icon = if (activeSchedule != null) BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW) else null
                 )
             }
 
