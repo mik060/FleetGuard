@@ -1,7 +1,7 @@
 package com.example.fleet_guard.data
 
 data class Vehicle(
-    val id: String = "",
+    override val id: String = "",
     val model: String = "",
     val plateNumber: String = "",
     val status: String = "Available",
@@ -10,5 +10,6 @@ data class Vehicle(
     val longitude: Double = 120.9842,
     val maintenanceReason: String? = null,
     val adminId: String? = null,
+    override val timestamp: Long = System.currentTimeMillis(),
     val locationHistory: List<Map<String, Double>> = emptyList()
-)
+) : FirestoreEntity()

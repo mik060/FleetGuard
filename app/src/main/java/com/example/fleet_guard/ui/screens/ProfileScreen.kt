@@ -25,7 +25,8 @@ import com.example.fleet_guard.ui.theme.Fleet_GuardTheme
 fun ProfileScreen(
     user: User?,
     onBackClick: () -> Unit = {},
-    onLogoutClick: () -> Unit = {}
+    onLogoutClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     val darkBlue = Color(0xFF004D61)
     val lightBlue = Color(0xFFE0F7FA)
@@ -67,8 +68,8 @@ fun ProfileScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showLogoutConfirmation = true }) {
-                        Icon(Icons.Default.Logout, contentDescription = "Logout", tint = Color.White)
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF0288D1))
@@ -134,6 +135,28 @@ fun ProfileScreen(
             }
 
             Spacer(modifier = Modifier.weight(1f))
+
+            // Logout Button at the bottom (above navigation bar)
+            Button(
+                onClick = { showLogoutConfirmation = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(bottom = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+            ) {
+                Icon(Icons.Default.Logout, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "LOGOUT ACCOUNT",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White,
+                    letterSpacing = 1.sp
+                )
+            }
         }
     }
 }

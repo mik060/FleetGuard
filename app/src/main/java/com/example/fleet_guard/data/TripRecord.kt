@@ -1,7 +1,7 @@
 package com.example.fleet_guard.data
 
 data class TripRecord(
-    val id: String = "",
+    override val id: String = "",
     val driver: String = "",
     val route: String = "",
     val destination: String = "",
@@ -16,7 +16,7 @@ data class TripRecord(
     val status: String = "Returning", // "Returning", "Returned"
     val userId: String = "",
     val adminId: String? = null,
-    val timestamp: Long = System.currentTimeMillis(),
+    override val timestamp: Long = System.currentTimeMillis(),
     val returnTimestamp: Long? = null,
     val locationHistory: List<Map<String, Double>> = emptyList()
-)
+) : FirestoreEntity()

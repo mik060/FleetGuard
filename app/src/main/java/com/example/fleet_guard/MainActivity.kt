@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.google.android.gms.maps.MapsInitializer
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -318,7 +320,7 @@ fun AppNavigation() {
                 ) {
                     val navItems = mutableListOf(
                         Triple("Dashboard", "dashboard", Icons.Default.Dashboard),
-                        Triple("Trip History", "trip_summary", Icons.Default.History)
+                        Triple("History", "trip_summary", Icons.Default.History)
                     )
                     
                     if (loggedInUser?.isAdmin == true) {
@@ -328,6 +330,10 @@ fun AppNavigation() {
                     navItems.add(Triple("Profile", "profile", Icons.Default.Person))
                     
                     navItems.forEach { (label, route, icon) ->
+                        val isSelected = navBackStackEntry?.destination?.hierarchy?.any { 
+                            it.route == route || (route == "trip_summary" && it.route?.startsWith("trip_summary") == true)
+                        } == true
+                        
                         NavigationBarItem(
                             icon = { 
                                 if (route == "pending_approvals" && pendingUsers.isNotEmpty()) {
@@ -347,16 +353,16 @@ fun AppNavigation() {
                                     )
                                 ) 
                             },
-                            selected = navBackStackEntry?.destination?.hierarchy?.any { 
-                                it.route == route || (route == "trip_summary" && it.route?.startsWith("trip_summary") == true)
-                            } == true,
+                            selected = isSelected,
                             onClick = {
-                                navController.navigate(route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
+                                if (!isSelected) {
+                                    navController.navigate(route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
                             },
                             colors = NavigationBarItemDefaults.colors(
@@ -364,7 +370,7 @@ fun AppNavigation() {
                                 selectedTextColor = Color.White,
                                 unselectedIconColor = Color.White.copy(alpha = 0.6f),
                                 unselectedTextColor = Color.White.copy(alpha = 0.6f),
-                                indicatorColor = Color(0xFF01579B) // Darker blue for selection indicator
+                                indicatorColor = Color.Transparent
                             )
                         )
                     }
@@ -376,10 +382,30 @@ fun AppNavigation() {
             navController = navController, 
             startDestination = "login",
             modifier = Modifier.padding(innerPadding),
-            enterTransition = { fadeIn(animationSpec = tween(300)) },
-            exitTransition = { fadeOut(animationSpec = tween(300)) },
-            popEnterTransition = { fadeIn(animationSpec = tween(300)) },
-            popExitTransition = { fadeOut(animationSpec = tween(300)) }
+            enterTransition = { 
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(400)
+                )
+            },
+            exitTransition = { 
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                    animationSpec = tween(400)
+                )
+            },
+            popEnterTransition = { 
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(400)
+                )
+            },
+            popExitTransition = { 
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                    animationSpec = tween(400)
+                )
+            }
         ) {
             composable("login") {
                 LoginScreen(
@@ -781,6 +807,9 @@ fun AppNavigation() {
                         navController.navigate("login") {
                             popUpTo(0) { inclusive = true }
                         }
+                    },
+                    onSettingsClick = {
+                        navController.navigate("settings")
                     },
                     onBackClick = {
                         navController.popBackStack()
