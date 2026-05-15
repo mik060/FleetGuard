@@ -265,14 +265,25 @@ fun AppNavigation() {
     fun approveSchedule(schedule: ScheduleData) {
         scope.launch {
             try {
+                // Check if vehicle is still available
+                val vehicleToUpdate = vehicles.find { "${it.model} (${it.plateNumber})" == schedule.vehicle }
+                
+                if (vehicleToUpdate == null) {
+                    Toast.makeText(context, "Vehicle information not found", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                if (vehicleToUpdate.status != "Available") {
+                    Toast.makeText(context, "Vehicle is currently ${vehicleToUpdate.status}. Wait until it is Available.", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+
                 firestore.collection("schedules").document(schedule.id)
                     .update("status", "APPROVED").await()
                 
-                val vehicleToUpdate = vehicles.find { "${it.model} (${it.plateNumber})" == schedule.vehicle }
-                if (vehicleToUpdate != null) {
-                    firestore.collection("vehicles").document(vehicleToUpdate.id)
-                        .update("status", "In Use").await()
-                }
+                firestore.collection("vehicles").document(vehicleToUpdate.id)
+                    .update("status", "In Use").await()
+
                 Toast.makeText(context, "Schedule Approved", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(context, "Failed to approve: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -643,7 +654,10 @@ fun AppNavigation() {
                                         ).await()
                                     
                                     firestore.collection("trips").document(trip.id)
-                                        .update("status", "Returned").await()
+                                        .update(
+                                            "status", "Returned",
+                                            "returnTimestamp", System.currentTimeMillis()
+                                        ).await()
                                     
                                     Toast.makeText(context, "Vehicle is now Available", Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {

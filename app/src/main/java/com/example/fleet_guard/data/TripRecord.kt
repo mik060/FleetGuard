@@ -17,5 +17,6 @@ data class TripRecord(
     val userId: String = "",
     val adminId: String? = null,
     val timestamp: Long = System.currentTimeMillis(),
+    val returnTimestamp: Long? = null,
     val locationHistory: List<Map<String, Double>> = emptyList()
 )

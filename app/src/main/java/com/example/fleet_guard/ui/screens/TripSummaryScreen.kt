@@ -24,6 +24,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.res.Configuration
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.example.fleet_guard.data.User
 import com.example.fleet_guard.data.Vehicle
 import com.example.fleet_guard.data.TripRecord
@@ -129,6 +132,11 @@ fun TripSummaryScreen(
                         
                         // Arrival Info (Recorded when Reached Destination)
                         DetailRow(icon = Icons.Default.LocationOn, label = "To (Destination)", value = selectedTrip?.destination ?: "")
+                        
+                        if (selectedTrip?.status == "Returned" && selectedTrip?.returnTimestamp != null) {
+                            DetailRow(icon = Icons.Default.EventAvailable, label = "Return Time", value = formatTime(selectedTrip?.returnTimestamp))
+                            DetailRow(icon = Icons.Default.Update, label = "Returned", value = formatRelativeTime(selectedTrip?.returnTimestamp))
+                        }
                         
                         // Calculated/Actual Stats
                         DetailRow(icon = Icons.Default.Speed, label = "Total Distance", value = selectedTrip?.mileage ?: "")
@@ -309,19 +317,31 @@ fun TripCard(
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier.padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF43A047), modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Successfully Returned to Base",
-                                color = Color(0xFF43A047),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF43A047), modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Successfully Returned to Base",
+                                    color = Color(0xFF43A047),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            if (trip.returnTimestamp != null) {
+                                Text(
+                                    text = "Returned ${formatRelativeTime(trip.returnTimestamp)}",
+                                    color = Color(0xFF2E7D32),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
                 }
@@ -444,3 +464,28 @@ fun TripSummaryPreview() {
         TripSummaryScreen()
     }
 }
+
+fun formatRelativeTime(timestamp: Long?): String {
+    if (timestamp == null) return ""
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+    
+    val seconds = diff / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+    val days = hours / 24
+    
+    return when {
+        days > 0 -> "$days day${if (days > 1L) "s" else ""} ago"
+        hours > 0 -> "$hours hour${if (hours > 1L) "s" else ""} ago"
+        minutes > 0 -> "$minutes minute${if (minutes > 1L) "s" else ""} ago"
+        else -> "Just now"
+    }
+}
+
+fun formatTime(timestamp: Long?): String {
+    if (timestamp == null) return ""
+    val sdf = SimpleDateFormat("MMM dd, yyyy 'at' hh:mm a", Locale.getDefault())
+    return sdf.format(Date(timestamp))
+}
+

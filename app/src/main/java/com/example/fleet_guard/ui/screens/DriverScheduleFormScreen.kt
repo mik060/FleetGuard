@@ -353,12 +353,12 @@ fun DriverScheduleFormScreen(
                                                 val results = FloatArray(1)
                                                 android.location.Location.distanceBetween(sLat, sLng, dLat, dLng, results)
                                                 
-                                                // ROAD ACCURACY FACTOR: Google Maps routes are usually ~25-30% longer than straight lines
-                                                val roadDistanceKm = (results[0] / 1000) * 1.28
+                                                // ROAD ACCURACY FACTOR: Google Maps routes are usually ~30-40% longer than straight lines
+                                                val roadDistanceKm = (results[0] / 1000) * 1.35
                                                 calculatedKm = String.format("%.2f km", roadDistanceKm)
 
-                                                // TIME ESTIMATION: Average City Speed 30 km/h (includes traffic/lights)
-                                                val totalMinutes = (roadDistanceKm / 30.0) * 60.0
+                                                // TIME ESTIMATION: Average City Speed 25 km/h (includes traffic/lights)
+                                                val totalMinutes = (roadDistanceKm / 25.0) * 60.0
                                                 estimatedTime = if (totalMinutes < 60) {
                                                     "${totalMinutes.toInt()} mins"
                                                 } else {

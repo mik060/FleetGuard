@@ -428,14 +428,68 @@ fun DashboardScreen(
                     }
                 }
 
-                if (schedules.isNotEmpty()) {
+                val userPendingSchedules = schedules.filter { it.status == "PENDING" }
+                val userApprovedSchedules = schedules.filter { it.status != "PENDING" }
+
+                if (userPendingSchedules.isNotEmpty()) {
+                    item {
+                        ModernDashboardSection(
+                            title = "Pending Approval",
+                            icon = Icons.Default.HourglassEmpty
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                userPendingSchedules.forEach { item ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp)
+                                            .clickable { scheduleToShowInfo = item },
+                                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                                        shape = RoundedCornerShape(12.dp),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF9A825).copy(alpha = 0.5f))
+                                    ) {
+                                        Column(modifier = Modifier.padding(12.dp)) {
+                                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text("${item.route} -> ${item.destination}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
+                                                    Text("Vehicle: ${item.vehicle}", color = darkBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                                Column(horizontalAlignment = Alignment.End) {
+                                                    Text(item.time, fontWeight = FontWeight.Medium, color = Color(0xFFF9A825))
+                                                    Text(item.date, fontSize = 12.sp, color = Color.Gray)
+                                                }
+                                            }
+                                            Surface(
+                                                modifier = Modifier.padding(top = 8.dp),
+                                                color = Color(0xFFF9A825).copy(alpha = 0.1f),
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(Icons.Default.HourglassTop, contentDescription = null, tint = Color(0xFFF9A825), modifier = Modifier.size(12.dp))
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("AWAITING ADMIN APPROVAL", color = Color(0xFFF9A825), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (userApprovedSchedules.isNotEmpty()) {
                     item {
                         ModernDashboardSection(
                             title = "Your Recent Schedules",
                             icon = Icons.AutoMirrored.Filled.EventNote
                         ) {
                             Column(modifier = Modifier.padding(8.dp)) {
-                                schedules.take(10).forEach { item ->
+                                userApprovedSchedules.take(10).forEach { item ->
                                     val isScheduledTimeReached = try {
                                         val scheduleDate = dateFormat.parse("${item.date} ${item.time}")
                                         scheduleDate != null && currentTime.after(scheduleDate)
