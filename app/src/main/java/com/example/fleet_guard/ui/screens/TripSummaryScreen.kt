@@ -88,117 +88,89 @@ fun TripSummaryScreen(
                 .padding(paddingValues)
         ) {
             if (selectedTrip != null) {
-                // Trip Detail View with Map
-                val configuration = LocalConfiguration.current
-                val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-                if (isLandscape) {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        // Left Side: Information Card
-                        Card(
-                            modifier = Modifier
-                                .weight(0.4f)
-                                .fillMaxHeight()
-                                .padding(16.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                // Trip Detail View - Text Only (Map Removed)
+                Card(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Route, contentDescription = null, tint = Color(0xFF006064), modifier = Modifier.size(28.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("FULL TRIP DETAILS", fontWeight = FontWeight.Black, fontSize = 20.sp, color = Color(0xFF006064))
+                        }
+                        
+                        HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), thickness = 2.dp)
+                        
+                        DetailRow(icon = Icons.Default.Person, label = "Driver", value = selectedTrip?.driver ?: "")
+                        DetailRow(icon = Icons.Default.DirectionsCar, label = "Vehicle", value = selectedTrip?.vehicle ?: "")
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("TIMELINE & LOGS", fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color.Black)
+                        
+                        // Departure Info (Original Date/Time from Schedule)
+                        DetailRow(icon = Icons.Default.DirectionsRun, label = "Departure Date", value = selectedTrip?.date?.substringBefore(" at") ?: "")
+                        DetailRow(icon = Icons.Default.Schedule, label = "Departure Time", value = selectedTrip?.date?.substringAfter("at ") ?: "")
+                        DetailRow(icon = Icons.Default.Home, label = "From (Start)", value = selectedTrip?.route ?: "")
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Icon(Icons.Default.ArrowDownward, contentDescription = null, tint = Color.Gray, modifier = Modifier.padding(start = 8.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        // Arrival Info (Recorded when Reached Destination)
+                        DetailRow(icon = Icons.Default.LocationOn, label = "To (Destination)", value = selectedTrip?.destination ?: "")
+                        
+                        // Calculated/Actual Stats
+                        DetailRow(icon = Icons.Default.Speed, label = "Total Distance", value = selectedTrip?.mileage ?: "")
+                        DetailRow(icon = Icons.Default.Timer, label = "Est. Travel Time", value = selectedTrip?.estimatedTime ?: "")
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Surface(
+                            color = if (selectedTrip?.status == "Returned") Color(0xFF43A047).copy(alpha = 0.1f) else Color(0xFFF9A825).copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .verticalScroll(rememberScrollState()),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Route, contentDescription = null, tint = Color(0xFF006064))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Trip Summary", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF006064))
-                                }
-                                
-                                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 4.dp))
-                                
-                                DetailRow(icon = Icons.Default.Person, label = "Driver", value = selectedTrip?.driver ?: "")
-                                DetailRow(icon = Icons.Default.DirectionsCar, label = "Vehicle", value = selectedTrip?.vehicle ?: "")
-                                DetailRow(icon = Icons.Default.Home, label = "Start Point", value = selectedTrip?.route ?: "")
-                                DetailRow(icon = Icons.Default.LocationOn, label = "Destination", value = selectedTrip?.destination ?: "")
-                                DetailRow(icon = Icons.Default.CalendarToday, label = "Date", value = selectedTrip?.date ?: "")
-                                DetailRow(icon = Icons.Default.Speed, label = "Mileage", value = selectedTrip?.mileage ?: "")
-                                DetailRow(icon = Icons.Default.Schedule, label = "Travel Time", value = selectedTrip?.estimatedTime ?: "")
-                                
-                                Surface(
-                                    color = if (selectedTrip?.status == "Returned") Color(0xFF43A047).copy(alpha = 0.1f) else Color(0xFFF9A825).copy(alpha = 0.1f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.padding(top = 8.dp)
-                                ) {
-                                    Text(
-                                        text = "Status: ${selectedTrip?.status}",
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        color = if (selectedTrip?.status == "Returned") Color(0xFF43A047) else Color(0xFFF9A825),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                Icon(
+                                    if (selectedTrip?.status == "Returned") Icons.Default.Verified else Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = if (selectedTrip?.status == "Returned") Color(0xFF43A047) else Color(0xFFF9A825),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "STATUS: ${selectedTrip?.status?.uppercase()}",
+                                    color = if (selectedTrip?.status == "Returned") Color(0xFF43A047) else Color(0xFFF9A825),
+                                    fontWeight = FontWeight.Black
+                                )
                             }
                         }
-
-                        // Right Side: Map View
-                        Box(modifier = Modifier.weight(0.6f).fillMaxHeight()) {
-                            TripMapView(selectedTrip!!, vehicles)
-                        }
-                    }
-                } else {
-                    // Portrait Mode (Original Layout)
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        // Top Half: Information Card
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(0.4f)
-                                .padding(16.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.White),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .padding(16.dp)
-                                    .verticalScroll(rememberScrollState()),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        
+                        if (selectedTrip?.status == "Returning" && !isAdmin) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { onCompleteReturn(selectedTrip!!) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF004D61)),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Route, contentDescription = null, tint = Color(0xFF006064))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Trip Summary", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF006064))
-                                }
-                                
-                                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 4.dp))
-                                
-                                DetailRow(icon = Icons.Default.Person, label = "Driver", value = selectedTrip?.driver ?: "")
-                                DetailRow(icon = Icons.Default.DirectionsCar, label = "Vehicle", value = selectedTrip?.vehicle ?: "")
-                                DetailRow(icon = Icons.Default.Home, label = "Start Point", value = selectedTrip?.route ?: "")
-                                DetailRow(icon = Icons.Default.LocationOn, label = "Destination", value = selectedTrip?.destination ?: "")
-                                DetailRow(icon = Icons.Default.CalendarToday, label = "Date", value = selectedTrip?.date ?: "")
-                                DetailRow(icon = Icons.Default.Speed, label = "Mileage", value = selectedTrip?.mileage ?: "")
-                                DetailRow(icon = Icons.Default.Schedule, label = "Travel Time", value = selectedTrip?.estimatedTime ?: "")
-                                
-                                Surface(
-                                    color = if (selectedTrip?.status == "Returned") Color(0xFF43A047).copy(alpha = 0.1f) else Color(0xFFF9A825).copy(alpha = 0.1f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.padding(top = 8.dp)
-                                ) {
-                                    Text(
-                                        text = "Status: ${selectedTrip?.status}",
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                        color = if (selectedTrip?.status == "Returned") Color(0xFF43A047) else Color(0xFFF9A825),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                Icon(Icons.Default.CheckCircle, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("COMPLETE RETURN TO BASE", fontWeight = FontWeight.Black)
                             }
-                        }
-
-                        // Bottom Half: Map View
-                        Box(modifier = Modifier.weight(0.6f)) {
-                            TripMapView(selectedTrip!!, vehicles)
                         }
                     }
                 }

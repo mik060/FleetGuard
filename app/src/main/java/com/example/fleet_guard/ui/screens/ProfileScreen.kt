@@ -124,14 +124,12 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ProfileDetailItem(icon = Icons.Default.Badge, label = "User ID", value = user?.id?.toString() ?: "N/A")
                 ProfileDetailItem(icon = Icons.Default.Email, label = "Email", value = user?.email ?: "N/A")
                 
                 if (user?.isAdmin == true && user.adminId != null) {
                     ProfileDetailItem(icon = Icons.Default.Key, label = "Admin ID", value = user.adminId)
                 }
                 
-                ProfileDetailItem(icon = Icons.Default.VerifiedUser, label = "Account Status", value = "Active")
                 ProfileDetailItem(icon = Icons.Default.Security, label = "Role", value = if(user?.isAdmin == true) "Administrator" else "Fleet User")
             }
 
