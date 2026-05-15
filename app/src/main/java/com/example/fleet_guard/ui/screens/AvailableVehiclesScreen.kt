@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -43,8 +44,66 @@ fun AvailableVehiclesScreen(
 
     val isAdmin = user?.isAdmin == true
     var showAddDialog by remember { mutableStateOf(false) }
+    var vehicleToShowInfo by remember { mutableStateOf<Vehicle?>(null) }
 
     val filteredVehicles = if (statusFilter == "All") vehicles else vehicles.filter { it.status == statusFilter }
+
+    if (vehicleToShowInfo != null) {
+        val v = vehicleToShowInfo!!
+        AlertDialog(
+            onDismissRequest = { vehicleToShowInfo = null },
+            title = { 
+                Text(
+                    v.model.uppercase(), 
+                    fontWeight = FontWeight.Black, 
+                    fontSize = 22.sp,
+                    color = darkBlue
+                ) 
+            },
+            containerColor = Color.White,
+            text = {
+                Surface(
+                    color = lightBlue.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        VehicleInfoRow(Icons.Default.DirectionsCar, "Model", v.model)
+                        VehicleInfoRow(Icons.Default.Badge, "Plate Number", v.plateNumber)
+                        VehicleInfoRow(Icons.Default.Category, "Vehicle Kind", v.type)
+                        
+                        val statusColor = when (v.status) {
+                            "Available" -> Color(0xFF43A047)
+                            "In Use" -> Color(0xFFD32F2F)
+                            "Returning" -> Color(0xFFF9A825)
+                            "In Repair" -> Color(0xFF757575)
+                            else -> Color.Gray
+                        }
+                        
+                        VehicleInfoRow(Icons.Default.Info, "Current Status", v.status, statusColor)
+                        
+                        if (v.status == "In Repair" && !v.maintenanceReason.isNullOrEmpty()) {
+                            HorizontalDivider(color = Color.Black.copy(alpha = 0.1f))
+                            VehicleInfoRow(Icons.Default.Build, "Repair Reason", v.maintenanceReason, Color.Red)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { vehicleToShowInfo = null }, 
+                    colors = ButtonDefaults.buttonColors(containerColor = darkBlue),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                ) {
+                    Text("CLOSE", fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                }
+            }
+        )
+    }
 
     if (showAddDialog) {
         AddVehicleDialog(
@@ -117,7 +176,7 @@ fun AvailableVehiclesScreen(
                     items(filteredVehicles) { vehicle ->
                         VehicleCard(
                             vehicle = vehicle, 
-                            onClick = { onVehicleClick(vehicle) },
+                            onClick = { vehicleToShowInfo = vehicle },
                             isAdmin = isAdmin,
                             onDelete = { onDeleteVehicle(vehicle) }
                         )
@@ -333,68 +392,73 @@ fun VehicleCard(
                 Text(
                     text = vehicle.model,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Black,
+                    color = Color.Black
                 )
                 Text(
                     text = "Plate: ${vehicle.plateNumber}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = "Kind: ${vehicle.type}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold
                 )
                 if (vehicle.status == "In Repair" && !vehicle.maintenanceReason.isNullOrEmpty()) {
                     Text(
                         text = "Reason: ${vehicle.maintenanceReason}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.Red,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Black
                     )
                 }
             }
             
             Column(horizontalAlignment = Alignment.End) {
                 Surface(
-                    color = statusColor.copy(alpha = 0.1f),
+                    color = statusColor.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = vehicle.status,
+                        text = vehicle.status.uppercase(),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         color = statusColor,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Black,
                         fontSize = 12.sp
                     )
                 }
                 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isAdmin) {
-                        IconButton(
-                            onClick = { showDeleteConfirm = true },
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete",
-                                tint = Color.Red.copy(alpha = 0.7f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
+                if (isAdmin) {
+                    IconButton(
+                        onClick = { showDeleteConfirm = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = Color.Red,
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
-                    
-                    Icon(
-                        Icons.Default.LocationOn, 
-                        contentDescription = "View Map",
-                        tint = Color(0xFF004D61),
-                        modifier = Modifier.size(20.dp)
-                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun VehicleInfoRow(icon: ImageVector, label: String, value: String, valueColor: Color = Color.Black) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Icon(icon, contentDescription = null, tint = Color.Black, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(label, fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+            Text(value, fontSize = 16.sp, fontWeight = FontWeight.Black, color = valueColor)
         }
     }
 }

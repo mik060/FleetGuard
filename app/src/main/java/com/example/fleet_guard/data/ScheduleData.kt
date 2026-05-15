@@ -15,6 +15,7 @@ data class ScheduleData(
     val startLng: Double = 120.9842,
     val destLat: Double = 14.6091,
     val destLng: Double = 121.0223,
+    val estimatedTime: String = "",
     val userId: String = "",
     val adminId: String? = null,
     val timestamp: Long = System.currentTimeMillis(),

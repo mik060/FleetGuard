@@ -60,7 +60,7 @@ fun ProfileScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Profile", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text("PROFILE", color = Color.White, fontWeight = FontWeight.Black) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
@@ -71,7 +71,7 @@ fun ProfileScreen(
                         Icon(Icons.Default.Logout, contentDescription = "Logout", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = headerBlue)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF0288D1))
             )
         },
         containerColor = lightBlue
@@ -107,13 +107,14 @@ fun ProfileScreen(
             Text(
                 text = user?.fullName ?: "Guest User",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = darkBlue
+                fontWeight = FontWeight.Black,
+                color = Color.Black
             )
             Text(
                 text = user?.email ?: "Not logged in",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
+                color = Color.Black,
+                fontWeight = FontWeight.Bold
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -153,11 +154,11 @@ fun ProfileDetailItem(icon: ImageVector, label: String, value: String) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, contentDescription = null, tint = Color(0xFF004D61), modifier = Modifier.size(24.dp))
+            Icon(icon, contentDescription = null, tint = Color.Black, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.Black, fontWeight = FontWeight.Black)
+                Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = Color.Black)
             }
         }
     }

@@ -2,6 +2,8 @@ package com.example.fleet_guard.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,21 +13,26 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.res.Configuration
 import com.example.fleet_guard.data.User
 import com.example.fleet_guard.data.Vehicle
 import com.example.fleet_guard.data.TripRecord
 import com.example.fleet_guard.ui.theme.Fleet_GuardTheme
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.maps.android.compose.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,32 +49,10 @@ fun TripSummaryScreen(
     val headerBlue = Color(0xFF81D4FA)
     val isAdmin = user?.isAdmin == true
     
-    var selectedTrip by remember(initialSelectedTripId, tripHistory) { 
-        mutableStateOf(tripHistory.find { it.id == initialSelectedTripId })
-    }
-
-    // For User: AlertDialog when a trip is selected
-    if (selectedTrip != null && !isAdmin) {
-        AlertDialog(
-            onDismissRequest = { selectedTrip = null },
-            title = { Text("Trip Details", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DetailRow(icon = Icons.Default.Person, label = "Driver", value = selectedTrip?.driver ?: "")
-                    DetailRow(icon = Icons.Default.DirectionsCar, label = "Vehicle", value = selectedTrip?.vehicle ?: "")
-                    DetailRow(icon = Icons.Default.Route, label = "Start", value = selectedTrip?.route ?: "")
-                    DetailRow(icon = Icons.Default.LocationOn, label = "Destination", value = selectedTrip?.destination ?: "")
-                    DetailRow(icon = Icons.Default.CalendarToday, label = "Date", value = selectedTrip?.date ?: "")
-                    DetailRow(icon = Icons.Default.Speed, label = "Mileage", value = selectedTrip?.mileage ?: "")
-                    DetailRow(icon = Icons.Default.Info, label = "Status", value = selectedTrip?.status ?: "")
-                }
-            },
-            confirmButton = {
-                Button(onClick = { selectedTrip = null }) {
-                    Text("Close")
-                }
-            }
-        )
+    var selectedTripId by rememberSaveable { mutableStateOf(initialSelectedTripId) }
+    
+    var selectedTrip by remember(selectedTripId, tripHistory) { 
+        mutableStateOf(tripHistory.find { it.id == selectedTripId })
     }
 
     Scaffold(
@@ -75,32 +60,24 @@ fun TripSummaryScreen(
             CenterAlignedTopAppBar(
                 title = { 
                     Text(
-                        "FleetGuard", 
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 2.sp
+                        "TRIP DETAILS", 
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.5.sp
                         ),
                         color = Color.White
                     ) 
                 },
                 navigationIcon = {
-                    IconButton(onClick = { if (selectedTrip != null && isAdmin) selectedTrip = null else onBackClick() }) {
+                    IconButton(onClick = { if (selectedTrip != null) selectedTripId = null else onBackClick() }) {
                         Icon(
-                            if (selectedTrip != null && isAdmin) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack, 
+                            if (selectedTrip != null) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack, 
                             contentDescription = "Back", 
                             tint = Color.White
                         )
                     }
                 },
-                actions = {
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile", tint = Color.White, modifier = Modifier.size(32.dp))
-                    }
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = headerBlue)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF0288D1))
             )
         },
         containerColor = lightBlue
@@ -110,133 +87,118 @@ fun TripSummaryScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (selectedTrip != null && isAdmin) {
-                // Admin Split View: Info on top, Map on bottom
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Top Half: Information
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(0.45f)
-                            .padding(16.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Column(
+            if (selectedTrip != null) {
+                // Trip Detail View with Map
+                val configuration = LocalConfiguration.current
+                val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+                if (isLandscape) {
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        // Left Side: Information Card
+                        Card(
                             modifier = Modifier
-                                .padding(16.dp)
-                                .fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                .weight(0.4f)
+                                .fillMaxHeight()
+                                .padding(16.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF006064))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Live Trip Tracking", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF006064))
-                            }
-                            
-                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 4.dp))
-                            
-                            DetailRow(icon = Icons.Default.Person, label = "Driver", value = selectedTrip?.driver ?: "")
-                            DetailRow(icon = Icons.Default.DirectionsCar, label = "Vehicle", value = selectedTrip?.vehicle ?: "")
-                            DetailRow(icon = Icons.Default.Route, label = "Start", value = selectedTrip?.route ?: "")
-                            DetailRow(icon = Icons.Default.LocationOn, label = "Destination", value = selectedTrip?.destination ?: "")
-                            DetailRow(icon = Icons.Default.CalendarToday, label = "Date", value = selectedTrip?.date ?: "")
-                            DetailRow(icon = Icons.Default.Speed, label = "Mileage", value = selectedTrip?.mileage ?: "")
-                            
-                            Spacer(modifier = Modifier.height(4.dp))
-                            
-                            Surface(
-                                color = if (selectedTrip?.status == "Returned") Color(0xFF43A047).copy(alpha = 0.1f) else Color(0xFFF9A825).copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(8.dp)
+                            Column(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    text = "Status: ${selectedTrip?.status}",
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    color = if (selectedTrip?.status == "Returned") Color(0xFF43A047) else Color(0xFFF9A825),
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Route, contentDescription = null, tint = Color(0xFF006064))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Trip Summary", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF006064))
+                                }
+                                
+                                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 4.dp))
+                                
+                                DetailRow(icon = Icons.Default.Person, label = "Driver", value = selectedTrip?.driver ?: "")
+                                DetailRow(icon = Icons.Default.DirectionsCar, label = "Vehicle", value = selectedTrip?.vehicle ?: "")
+                                DetailRow(icon = Icons.Default.Home, label = "Start Point", value = selectedTrip?.route ?: "")
+                                DetailRow(icon = Icons.Default.LocationOn, label = "Destination", value = selectedTrip?.destination ?: "")
+                                DetailRow(icon = Icons.Default.CalendarToday, label = "Date", value = selectedTrip?.date ?: "")
+                                DetailRow(icon = Icons.Default.Speed, label = "Mileage", value = selectedTrip?.mileage ?: "")
+                                DetailRow(icon = Icons.Default.Schedule, label = "Travel Time", value = selectedTrip?.estimatedTime ?: "")
+                                
+                                Surface(
+                                    color = if (selectedTrip?.status == "Returned") Color(0xFF43A047).copy(alpha = 0.1f) else Color(0xFFF9A825).copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.padding(top = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "Status: ${selectedTrip?.status}",
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        color = if (selectedTrip?.status == "Returned") Color(0xFF43A047) else Color(0xFFF9A825),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
+                        }
+
+                        // Right Side: Map View
+                        Box(modifier = Modifier.weight(0.6f).fillMaxHeight()) {
+                            TripMapView(selectedTrip!!, vehicles)
                         }
                     }
-
-                    // Bottom Half: Map
-                    Box(modifier = Modifier.weight(0.55f)) {
-                        val currentTrip = selectedTrip
-                        val vehicle = if (currentTrip != null) {
-                            vehicles.find { "${it.model} (${it.plateNumber})" == currentTrip.vehicle }
-                        } else null
-
-                        val tripLocation = if (vehicle != null) LatLng(vehicle.latitude, vehicle.longitude) else LatLng(14.5995, 120.9842)
-                        
-                        val cameraPositionState = rememberCameraPositionState {
-                            position = CameraPosition.fromLatLngZoom(tripLocation, 15f)
-                        }
-                        
-                        // Update camera if vehicle moves
-                        LaunchedEffect(vehicle?.latitude, vehicle?.longitude) {
-                            if (vehicle != null) {
-                                cameraPositionState.position = CameraPosition.fromLatLngZoom(
-                                    LatLng(vehicle.latitude, vehicle.longitude), 
-                                    cameraPositionState.position.zoom
-                                )
-                            }
-                        }
-
-                        GoogleMap(
-                            modifier = Modifier.fillMaxSize(),
-                            cameraPositionState = cameraPositionState,
-                            uiSettings = MapUiSettings(zoomControlsEnabled = true)
+                } else {
+                    // Portrait Mode (Original Layout)
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Top Half: Information Card
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(0.4f)
+                                .padding(16.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                         ) {
-                            if (currentTrip != null) {
-                                // Start Point Marker
-                                Marker(
-                                    state = MarkerState(position = LatLng(currentTrip.startLat, currentTrip.startLng)),
-                                    title = "Start: ${currentTrip.route}",
-                                    icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_AZURE)
-                                )
-
-                                // Destination Point Marker
-                                Marker(
-                                    state = MarkerState(position = LatLng(currentTrip.destLat, currentTrip.destLng)),
-                                    title = "Destination: ${currentTrip.destination}",
-                                    icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_RED)
-                                )
-
-                                // Route Path (Polyline)
-                                Polyline(
-                                    points = listOf(
-                                        LatLng(currentTrip.startLat, currentTrip.startLng),
-                                        LatLng(currentTrip.destLat, currentTrip.destLng)
-                                    ),
-                                    color = Color(0xFF004D61),
-                                    width = 10f
-                                )
-                            }
-
-                            if (vehicle != null) {
-                                // Live Vehicle Marker
-                                Marker(
-                                    state = MarkerState(position = LatLng(vehicle.latitude, vehicle.longitude)),
-                                    title = "Current Location: ${vehicle.model}",
-                                    snippet = "Driver: ${selectedTrip?.driver}",
-                                    icon = com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_YELLOW)
-                                )
+                            Column(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Route, contentDescription = null, tint = Color(0xFF006064))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Trip Summary", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF006064))
+                                }
+                                
+                                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f), modifier = Modifier.padding(vertical = 4.dp))
+                                
+                                DetailRow(icon = Icons.Default.Person, label = "Driver", value = selectedTrip?.driver ?: "")
+                                DetailRow(icon = Icons.Default.DirectionsCar, label = "Vehicle", value = selectedTrip?.vehicle ?: "")
+                                DetailRow(icon = Icons.Default.Home, label = "Start Point", value = selectedTrip?.route ?: "")
+                                DetailRow(icon = Icons.Default.LocationOn, label = "Destination", value = selectedTrip?.destination ?: "")
+                                DetailRow(icon = Icons.Default.CalendarToday, label = "Date", value = selectedTrip?.date ?: "")
+                                DetailRow(icon = Icons.Default.Speed, label = "Mileage", value = selectedTrip?.mileage ?: "")
+                                DetailRow(icon = Icons.Default.Schedule, label = "Travel Time", value = selectedTrip?.estimatedTime ?: "")
+                                
+                                Surface(
+                                    color = if (selectedTrip?.status == "Returned") Color(0xFF43A047).copy(alpha = 0.1f) else Color(0xFFF9A825).copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.padding(top = 8.dp)
+                                ) {
+                                    Text(
+                                        text = "Status: ${selectedTrip?.status}",
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        color = if (selectedTrip?.status == "Returned") Color(0xFF43A047) else Color(0xFFF9A825),
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
-                        
-                        if (vehicle == null) {
-                            Surface(
-                                modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                                color = Color.Black.copy(alpha = 0.7f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(
-                                    "Vehicle location data unavailable",
-                                    color = Color.White,
-                                    modifier = Modifier.padding(16.dp)
-                                )
-                            }
+
+                        // Bottom Half: Map View
+                        Box(modifier = Modifier.weight(0.6f)) {
+                            TripMapView(selectedTrip!!, vehicles)
                         }
                     }
                 }
@@ -278,7 +240,7 @@ fun TripSummaryScreen(
                                 trip = trip, 
                                 onCompleteReturn = onCompleteReturn, 
                                 isAdmin = isAdmin,
-                                onCardClick = { selectedTrip = trip }
+                                onCardClick = { selectedTripId = trip.id }
                             )
                         }
                     }
@@ -312,13 +274,14 @@ fun TripCard(
                 Text(
                     text = trip.date,
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
+                    color = Color.Black, // Changed from Gray
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
                     text = trip.mileage,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFDE4444)
+                    fontWeight = FontWeight.Black, // Extra bold
+                    color = Color(0xFFB71C1C) // Slightly darker red for better contrast
                 )
             }
             
@@ -396,23 +359,108 @@ fun TripCard(
 }
 
 @Composable
+fun TripMapView(currentTrip: TripRecord, vehicles: List<Vehicle>) {
+    val vehicle = vehicles.find { "${it.model} (${it.plateNumber})" == currentTrip.vehicle }
+    
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(LatLng(currentTrip.startLat, currentTrip.startLng), 12f)
+    }
+
+    // Auto-zoom to fit the whole route
+    LaunchedEffect(currentTrip) {
+        try {
+            val bounds = LatLngBounds.builder()
+                .include(LatLng(currentTrip.startLat, currentTrip.startLng))
+                .include(LatLng(currentTrip.destLat, currentTrip.destLng))
+            
+            // Include history points in bounds
+            currentTrip.locationHistory.forEach { 
+                bounds.include(LatLng(it["lat"] ?: 0.0, it["lng"] ?: 0.0))
+            }
+
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngBounds(bounds.build(), 100),
+                1000
+            )
+        } catch (e: Exception) {
+            // If Maps/CameraUpdateFactory not ready yet, skip animation
+            e.printStackTrace()
+        }
+    }
+
+    GoogleMap(
+        modifier = Modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState,
+        uiSettings = MapUiSettings(zoomControlsEnabled = true)
+    ) {
+        // Start Point
+        Marker(
+            state = MarkerState(position = LatLng(currentTrip.startLat, currentTrip.startLng)),
+            title = "Start Point",
+            snippet = currentTrip.route,
+            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+        )
+
+        // Destination
+        Marker(
+            state = MarkerState(position = LatLng(currentTrip.destLat, currentTrip.destLng)),
+            title = "Destination",
+            snippet = currentTrip.destination,
+            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+        )
+
+        // Actual Path Taken
+        val historyPoints = currentTrip.locationHistory.map { LatLng(it["lat"] ?: 0.0, it["lng"] ?: 0.0) }
+        if (historyPoints.size > 1) {
+            Polyline(
+                points = historyPoints,
+                color = Color(0xFF0288D1),
+                width = 12f
+            )
+        } else {
+            // If no history (static view), show a direct line
+            Polyline(
+                points = listOf(
+                    LatLng(currentTrip.startLat, currentTrip.startLng),
+                    LatLng(currentTrip.destLat, currentTrip.destLng)
+                ),
+                color = Color.Gray.copy(alpha = 0.5f),
+                width = 8f
+            )
+        }
+
+        // Current Vehicle Position (if live)
+        if (vehicle != null && currentTrip.status == "Returning") {
+            Marker(
+                state = MarkerState(position = LatLng(vehicle.latitude, vehicle.longitude)),
+                title = "Current Position",
+                icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)
+            )
+        }
+    }
+}
+
+@Composable
 fun DetailRow(icon: ImageVector, label: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(16.dp),
-            tint = Color(0xFF004D61)
+            tint = Color.Black // Changed to Black
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "$label: ",
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Black, // Extra bold
+            color = Color.Black // Set to black
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = Color.Black // Set to black
         )
     }
 }

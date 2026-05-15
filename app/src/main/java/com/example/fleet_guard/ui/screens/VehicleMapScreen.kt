@@ -91,37 +91,50 @@ fun VehicleMapScreen(
                     myLocationButtonEnabled = locationPermissionGranted
                 )
             ) {
+                // Already Passed Path (Breadcrumbs)
+                val historyPoints = vehicle.locationHistory.map { LatLng(it["lat"] ?: 0.0, it["lng"] ?: 0.0) }
+                if (historyPoints.size > 1) {
+                    Polyline(
+                        points = historyPoints,
+                        color = Color(0xFF0288D1), // Bright Blue
+                        width = 12f
+                    )
+                }
+
                 if (activeSchedule != null) {
                     // Start Point Marker
                     Marker(
                         state = MarkerState(position = LatLng(activeSchedule.startLat, activeSchedule.startLng)),
-                        title = "Start: ${activeSchedule.route}",
+                        title = "Start Point",
+                        snippet = activeSchedule.route,
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
                     )
 
                     // Destination Point Marker
                     Marker(
                         state = MarkerState(position = LatLng(activeSchedule.destLat, activeSchedule.destLng)),
-                        title = "Destination: ${activeSchedule.destination}",
+                        title = "Destination",
+                        snippet = activeSchedule.destination,
                         icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
                     )
 
-                    // Route Path (Polyline)
+                    // Remaining Route (dotted-like line from vehicle to destination)
                     Polyline(
                         points = listOf(
-                            LatLng(activeSchedule.startLat, activeSchedule.startLng),
+                            vehicleLocation,
                             LatLng(activeSchedule.destLat, activeSchedule.destLng)
                         ),
-                        color = Color(0xFF004D61),
-                        width = 10f
+                        color = Color.Gray.copy(alpha = 0.5f),
+                        width = 8f
                     )
                 }
 
+                // Current Vehicle Marker
                 Marker(
                     state = MarkerState(position = vehicleLocation),
-                    title = "Vehicle: ${vehicle.model}",
+                    title = vehicle.model,
                     snippet = "Status: ${vehicle.status}",
-                    icon = if (activeSchedule != null) BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW) else null
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)
                 )
             }
 

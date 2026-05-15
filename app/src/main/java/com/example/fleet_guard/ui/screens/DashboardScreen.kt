@@ -171,7 +171,8 @@ fun DashboardScreen(
                     DashboardDetailRow(icon = Icons.Default.Route, label = "Route", value = info?.route ?: "")
                     DashboardDetailRow(icon = Icons.Default.LocationOn, label = "Destination", value = info?.destination ?: "")
                     DashboardDetailRow(icon = Icons.Default.CalendarToday, label = "Date", value = info?.date ?: "")
-                    DashboardDetailRow(icon = Icons.Default.Schedule, label = "Time", value = info?.time ?: "")
+                    DashboardDetailRow(icon = Icons.Default.Schedule, label = "Schedule", value = info?.time ?: "")
+                    DashboardDetailRow(icon = Icons.Default.Timer, label = "Est. Travel Time", value = info?.estimatedTime ?: "")
                     DashboardDetailRow(icon = Icons.Default.Info, label = "Status", value = info?.status ?: "PENDING")
                 }
             },
@@ -189,23 +190,23 @@ fun DashboardScreen(
                 title = { 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            "FleetGuard", 
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.ExtraBold,
+                            "FLEETGUARD", 
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Black,
                                 letterSpacing = 2.sp
                             ),
                             color = Color.White
                         )
                         Surface(
-                            color = Color.White.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(8.dp)
+                            color = Color.Black.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
-                                text = if (isAdmin) "ROLE: ADMIN" else "ROLE: USER",
+                                text = if (isAdmin) "ADMIN ACCESS" else "DRIVER ACCESS",
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                 color = Color.White,
                                 fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Black
                             )
                         }
                     }
@@ -216,7 +217,7 @@ fun DashboardScreen(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = headerBlue
+                    containerColor = Color(0xFF0288D1)
                 )
             )
         },

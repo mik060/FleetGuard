@@ -12,8 +12,10 @@ data class TripRecord(
     val startLng: Double = 120.9842,
     val destLat: Double = 14.6091,
     val destLng: Double = 121.0223,
+    val estimatedTime: String = "",
     val status: String = "Returning", // "Returning", "Returned"
     val userId: String = "",
     val adminId: String? = null,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val locationHistory: List<Map<String, Double>> = emptyList()
 )

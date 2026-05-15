@@ -43,19 +43,19 @@ fun PendingApprovalsScreen(
         topBar = {
             Column {
                 CenterAlignedTopAppBar(
-                    title = { Text("Pending Approvals", color = Color.White, fontWeight = FontWeight.Bold) },
+                    title = { Text("PENDING APPROVALS", color = Color.White, fontWeight = FontWeight.Black) },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = headerBlue
+                        containerColor = Color(0xFF0288D1)
                     )
                 )
                 TabRow(
                     selectedTabIndex = selectedTab,
-                    containerColor = headerBlue,
+                    containerColor = Color(0xFF0288D1),
                     contentColor = Color.White,
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
@@ -68,7 +68,7 @@ fun PendingApprovalsScreen(
                         Tab(
                             selected = selectedTab == index,
                             onClick = { selectedTab = index },
-                            text = { Text(title, fontWeight = FontWeight.Bold) }
+                            text = { Text(title, fontWeight = FontWeight.Black) }
                         )
                     }
                 }
@@ -111,13 +111,13 @@ fun PendingUsersList(
                             Icon(
                                 Icons.Default.Person, 
                                 contentDescription = null, 
-                                tint = darkBlue, 
+                                tint = Color.Black, 
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(user.fullName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                Text(user.email, color = Color.Gray, fontSize = 14.sp)
+                                Text(user.fullName, fontWeight = FontWeight.Black, fontSize = 16.sp, color = Color.Black)
+                                Text(user.email, color = Color.Black, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                         Spacer(modifier = Modifier.height(16.dp))
@@ -167,8 +167,8 @@ fun PendingSchedulesList(
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(item.route, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = darkBlue)
-                        Text("Destination: ${item.destination}", fontSize = 14.sp, color = Color.Gray)
+                        Text(item.route, fontWeight = FontWeight.Black, fontSize = 18.sp, color = Color.Black)
+                        Text("Destination: ${item.destination}", fontSize = 14.sp, color = Color.Black, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -176,30 +176,30 @@ fun PendingSchedulesList(
                                 Icons.Default.Person, 
                                 contentDescription = null, 
                                 modifier = Modifier.size(16.dp), 
-                                tint = Color.Gray
+                                tint = Color.Black
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(item.driver, fontSize = 14.sp)
+                            Text(item.driver, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.DirectionsCar, 
                                 contentDescription = null, 
                                 modifier = Modifier.size(16.dp), 
-                                tint = Color.Gray
+                                tint = Color.Black
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(item.vehicle, fontSize = 14.sp)
+                            Text(item.vehicle, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.Schedule, 
                                 contentDescription = null, 
                                 modifier = Modifier.size(16.dp), 
-                                tint = Color.Gray
+                                tint = Color.Black
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("${item.date} at ${item.time}", fontSize = 14.sp)
+                            Text("${item.date} at ${item.time}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                         
                         Spacer(modifier = Modifier.height(16.dp))

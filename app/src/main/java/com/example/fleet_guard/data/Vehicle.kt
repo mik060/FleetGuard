@@ -9,5 +9,6 @@ data class Vehicle(
     val latitude: Double = 14.5995, // Default to Manila
     val longitude: Double = 120.9842,
     val maintenanceReason: String? = null,
-    val adminId: String? = null
+    val adminId: String? = null,
+    val locationHistory: List<Map<String, Double>> = emptyList()
 )

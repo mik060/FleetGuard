@@ -2,6 +2,7 @@ package com.example.fleet_guard.ui.screens
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.location.Geocoder
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,6 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fleet_guard.data.User
 import com.example.fleet_guard.ui.theme.Fleet_GuardTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,23 +45,35 @@ import java.util.*
 fun DriverScheduleFormScreen(
     user: User? = null,
     availableVehicles: List<String> = emptyList(),
-    onSaveClick: (String, String, String, String, String, String, String, Double, Double, Double, Double) -> Unit = { _, _, _, _, _, _, _, _, _, _, _ -> },
+    onSaveClick: (String, String, String, String, String, String, String, Double, Double, Double, Double, String) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _ -> },
     onBackClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+    
+    // Automatic Date and Time calculation
+    val dateFormat = remember { SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()) }
+    val timeFormat = remember { SimpleDateFormat("hh:mm a", Locale.getDefault()) }
+    
+    val initialDate = remember { dateFormat.format(calendar.time) }
+    val initialTime = remember { timeFormat.format(calendar.time) }
+
     var driverName by remember { mutableStateOf(user?.fullName ?: "") }
     var routeName by remember { mutableStateOf("") }
     var destinationName by remember { mutableStateOf("") }
     var usageReason by remember { mutableStateOf("") }
     var selectedVehicle by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("") }
-
-    val context = LocalContext.current
-    val calendar = Calendar.getInstance()
+    var date by remember { mutableStateOf(initialDate) }
+    var time by remember { mutableStateOf(initialTime) }
 
     val darkBlue = Color(0xFF004D61)
     val lightBlue = Color(0xFFE0F7FA)
     val headerBlue = Color(0xFF81D4FA)
+
+    val scope = rememberCoroutineScope()
+    var isVerifying by remember { mutableStateOf(false) }
+    var calculatedKm by remember { mutableStateOf("") }
+    var estimatedTime by remember { mutableStateOf("") }
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -203,6 +220,36 @@ fun DriverScheduleFormScreen(
                             singleLine = true
                         )
 
+                        if (calculatedKm.isNotEmpty()) {
+                            Surface(
+                                color = darkBlue.copy(alpha = 0.1f),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Route, contentDescription = null, tint = darkBlue)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            "Estimated Road Distance: $calculatedKm",
+                                            fontWeight = FontWeight.Bold,
+                                            color = darkBlue,
+                                            fontSize = 14.sp
+                                        )
+                                        Text(
+                                            "Estimated Travel Time: $estimatedTime",
+                                            fontWeight = FontWeight.Medium,
+                                            color = darkBlue.copy(alpha = 0.7f),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         // Vehicle Selection Dropdown - Fixed crash by using standard Box + DropdownMenu
                         Box(modifier = Modifier.fillMaxWidth()) {
                             OutlinedTextField(
@@ -256,43 +303,31 @@ fun DriverScheduleFormScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // Date Selector
+                            // Date Selector (Now Automatic)
                             Box(modifier = Modifier.weight(1f)) {
                                 OutlinedTextField(
                                     value = date,
                                     onValueChange = { },
-                                    label = { Text("DATE", fontWeight = FontWeight.Black, color = darkBlue) },
+                                    label = { Text("AUTO DATE", fontWeight = FontWeight.Black, color = darkBlue) },
                                     modifier = Modifier.fillMaxWidth(),
                                     leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, tint = darkBlue) },
                                     shape = RoundedCornerShape(12.dp),
                                     colors = textFieldColors,
-                                    readOnly = true,
-                                    placeholder = { Text("MM/DD/YYYY", color = Color.Gray) }
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .clickable { datePickerDialog.show() }
+                                    readOnly = true
                                 )
                             }
 
-                            // Time Selector
+                            // Time Selector (Now Automatic)
                             Box(modifier = Modifier.weight(1f)) {
                                 OutlinedTextField(
                                     value = time,
                                     onValueChange = { },
-                                    label = { Text("TIME", fontWeight = FontWeight.Black, color = darkBlue) },
+                                    label = { Text("AUTO TIME", fontWeight = FontWeight.Black, color = darkBlue) },
                                     modifier = Modifier.fillMaxWidth(),
                                     leadingIcon = { Icon(Icons.Default.Schedule, contentDescription = null, tint = darkBlue) },
                                     shape = RoundedCornerShape(12.dp),
                                     colors = textFieldColors,
-                                    readOnly = true,
-                                    placeholder = { Text("HH:MM AM/PM", color = Color.Gray) }
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .clickable { timePickerDialog.show() }
+                                    readOnly = true
                                 )
                             }
                         }
@@ -302,17 +337,51 @@ fun DriverScheduleFormScreen(
                         Button(
                             onClick = { 
                                 if (driverName.isNotEmpty() && usageReason.isNotEmpty() && routeName.isNotEmpty() && destinationName.isNotEmpty() && selectedVehicle.isNotEmpty() && date.isNotEmpty() && time.isNotEmpty()) {
-                                    // Simulated coordinates for demo purposes
-                                    val startLat = 14.5995 + (Random().nextDouble() * 0.01)
-                                    val startLng = 120.9842 + (Random().nextDouble() * 0.01)
-                                    val destLat = 14.6091 + (Random().nextDouble() * 0.05)
-                                    val destLng = 121.0223 + (Random().nextDouble() * 0.05)
-                                    
-                                    onSaveClick(driverName, routeName, destinationName, date, time, selectedVehicle, usageReason, startLat, startLng, destLat, destLng)
+                                    scope.launch {
+                                        isVerifying = true
+                                        try {
+                                            val geocoder = Geocoder(context)
+                                            val startAddrs = withContext(Dispatchers.IO) { geocoder.getFromLocationName(routeName, 1) }
+                                            val destAddrs = withContext(Dispatchers.IO) { geocoder.getFromLocationName(destinationName, 1) }
+
+                                            if (!startAddrs.isNullOrEmpty() && !destAddrs.isNullOrEmpty()) {
+                                                val sLat = startAddrs[0].latitude
+                                                val sLng = startAddrs[0].longitude
+                                                val dLat = destAddrs[0].latitude
+                                                val dLng = destAddrs[0].longitude
+
+                                                val results = FloatArray(1)
+                                                android.location.Location.distanceBetween(sLat, sLng, dLat, dLng, results)
+                                                
+                                                // ROAD ACCURACY FACTOR: Google Maps routes are usually ~25-30% longer than straight lines
+                                                val roadDistanceKm = (results[0] / 1000) * 1.28
+                                                calculatedKm = String.format("%.2f km", roadDistanceKm)
+
+                                                // TIME ESTIMATION: Average City Speed 30 km/h (includes traffic/lights)
+                                                val totalMinutes = (roadDistanceKm / 30.0) * 60.0
+                                                estimatedTime = if (totalMinutes < 60) {
+                                                    "${totalMinutes.toInt()} mins"
+                                                } else {
+                                                    val hours = (totalMinutes / 60).toInt()
+                                                    val mins = (totalMinutes % 60).toInt()
+                                                    "$hours hr $mins mins"
+                                                }
+
+                                                onSaveClick(driverName, routeName, destinationName, date, time, selectedVehicle, usageReason, sLat, sLng, dLat, dLng, estimatedTime)
+                                            } else {
+                                                Toast.makeText(context, "Could not find locations. Please be more specific (e.g., City, Street).", Toast.LENGTH_LONG).show()
+                                            }
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Error verifying locations: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        } finally {
+                                            isVerifying = false
+                                        }
+                                    }
                                 } else {
                                     Toast.makeText(context, "Please fill in all fields", Toast.LENGTH_SHORT).show()
                                 }
                             },
+                            enabled = !isVerifying,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(64.dp),
@@ -326,13 +395,19 @@ fun DriverScheduleFormScreen(
                                 pressedElevation = 12.dp
                             )
                         ) {
-                            Text(
-                                "SAVE SCHEDULE",
-                                fontWeight = FontWeight.Black,
-                                fontSize = 20.sp,
-                                color = Color.White,
-                                letterSpacing = 2.sp
-                            )
+                            if (isVerifying) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("VERIFYING...", fontWeight = FontWeight.Black)
+                            } else {
+                                Text(
+                                    "SAVE SCHEDULE",
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 20.sp,
+                                    color = Color.White,
+                                    letterSpacing = 2.sp
+                                )
+                            }
                         }
                     }
                 }

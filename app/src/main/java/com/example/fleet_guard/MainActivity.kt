@@ -1,9 +1,11 @@
 package com.example.fleet_guard
 
+import android.location.Location
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.google.android.gms.maps.MapsInitializer
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -39,16 +41,20 @@ import com.example.fleet_guard.ui.screens.*
 import com.example.fleet_guard.ui.theme.Fleet_GuardTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.text.SimpleDateFormat
 import java.util.UUID
+import java.util.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        MapsInitializer.initialize(this)
         setContent {
             Fleet_GuardTheme {
                 AppNavigation()
@@ -244,8 +250,13 @@ fun AppNavigation() {
         if (vehicle != null) {
             scope.launch {
                 try {
+                    val newPoint = mapOf("lat" to lat, "lng" to lng)
                     firestore.collection("vehicles").document(vehicle.id)
-                        .update("latitude", lat, "longitude", lng)
+                        .update(
+                            "latitude", lat,
+                            "longitude", lng,
+                            "locationHistory", FieldValue.arrayUnion(newPoint)
+                        )
                 } catch (_: Exception) { }
             }
         }
@@ -291,16 +302,16 @@ fun AppNavigation() {
             )
             if (showBottomBar && loggedInUser != null) {
                 NavigationBar(
-                    containerColor = Color(0xFF81D4FA),
-                    contentColor = Color.White
+                    containerColor = Color(0xFF0288D1), // Stronger, clearer blue
+                    tonalElevation = 8.dp
                 ) {
                     val navItems = mutableListOf(
                         Triple("Dashboard", "dashboard", Icons.Default.Dashboard),
-                        Triple("History", "trip_summary", Icons.Default.History)
+                        Triple("Trip History", "trip_summary", Icons.Default.History)
                     )
                     
                     if (loggedInUser?.isAdmin == true) {
-                        navItems.add(Triple("Pending", "pending_approvals", Icons.Default.Group))
+                        navItems.add(Triple("Approvals", "pending_approvals", Icons.Default.Group))
                     }
                     
                     navItems.add(Triple("Profile", "profile", Icons.Default.Person))
@@ -310,13 +321,21 @@ fun AppNavigation() {
                             icon = { 
                                 if (route == "pending_approvals" && pendingUsers.isNotEmpty()) {
                                     BadgedBox(badge = { Badge { Text(pendingUsers.size.toString()) } }) {
-                                        Icon(icon, contentDescription = label)
+                                        Icon(icon, contentDescription = label, modifier = Modifier.size(26.dp))
                                     }
                                 } else {
-                                    Icon(icon, contentDescription = label)
+                                    Icon(icon, contentDescription = label, modifier = Modifier.size(26.dp))
                                 }
                             },
-                            label = { Text(label) },
+                            label = { 
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                ) 
+                            },
                             selected = navBackStackEntry?.destination?.hierarchy?.any { 
                                 it.route == route || (route == "trip_summary" && it.route?.startsWith("trip_summary") == true)
                             } == true,
@@ -330,11 +349,11 @@ fun AppNavigation() {
                                 }
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFF004D61),
-                                selectedTextColor = Color(0xFF004D61),
-                                unselectedIconColor = Color.White.copy(alpha = 0.7f),
-                                unselectedTextColor = Color.White.copy(alpha = 0.7f),
-                                indicatorColor = Color.White.copy(alpha = 0.2f)
+                                selectedIconColor = Color.White,
+                                selectedTextColor = Color.White,
+                                unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                unselectedTextColor = Color.White.copy(alpha = 0.6f),
+                                indicatorColor = Color(0xFF01579B) // Darker blue for selection indicator
                             )
                         )
                     }
@@ -475,22 +494,39 @@ fun AppNavigation() {
                     },
                     onReachedDestination = { schedule ->
                         val uid = auth.currentUser?.uid ?: ""
+                        val distanceResults = FloatArray(1)
+                        Location.distanceBetween(
+                            schedule.startLat, schedule.startLng,
+                            schedule.destLat, schedule.destLng,
+                            distanceResults
+                        )
+                        val actualMileage = String.format("%.2f km", distanceResults[0] / 1000)
+
+                        val vehicleToUpdate = vehicles.find { "${it.model} (${it.plateNumber})" == schedule.vehicle }
+                        val history = vehicleToUpdate?.locationHistory ?: emptyList()
+
+                        // Record current time as Arrival Time
+                        val arrivalTime = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
+                        val arrivalDate = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date())
+
                         val newTrip = TripRecord(
                             id = UUID.randomUUID().toString(),
                             driver = schedule.driver,
                             route = schedule.route,
                             destination = schedule.destination,
                             vehicle = schedule.vehicle,
-                            date = schedule.date,
+                            date = "$arrivalDate at $arrivalTime", // Automatically includes current time
                             startLat = schedule.startLat,
                             startLng = schedule.startLng,
                             destLat = schedule.destLat,
                             destLng = schedule.destLng,
-                            mileage = "${(50..300).random()} km",
+                            estimatedTime = schedule.estimatedTime,
+                            mileage = actualMileage,
                             status = "Returning",
                             userId = uid,
                             adminId = schedule.adminId,
-                            timestamp = System.currentTimeMillis()
+                            timestamp = System.currentTimeMillis(),
+                            locationHistory = history
                         )
                         
                         scope.launch {
@@ -499,7 +535,6 @@ fun AppNavigation() {
                                 firestore.collection("schedules").document(schedule.id)
                                     .update("isReached", true).await()
                                 
-                                val vehicleToUpdate = vehicles.find { "${it.model} (${it.plateNumber})" == schedule.vehicle }
                                 if (vehicleToUpdate != null) {
                                     firestore.collection("vehicles").document(vehicleToUpdate.id)
                                         .update("status", "Returning").await()
@@ -602,7 +637,10 @@ fun AppNavigation() {
                             scope.launch {
                                 try {
                                     firestore.collection("vehicles").document(vehicleToUpdate.id)
-                                        .update("status", "Available").await()
+                                        .update(
+                                            "status", "Available",
+                                            "locationHistory", emptyList<Map<String, Double>>()
+                                        ).await()
                                     
                                     firestore.collection("trips").document(trip.id)
                                         .update("status", "Returned").await()
@@ -624,7 +662,7 @@ fun AppNavigation() {
                 DriverScheduleFormScreen(
                     user = loggedInUser,
                     availableVehicles = availableVehicleList,
-                    onSaveClick = { driver, route, destination, date, time, vehicle, reason, sLat, sLng, dLat, dLng ->
+                    onSaveClick = { driver, route, destination, date, time, vehicle, reason, sLat, sLng, dLat, dLng, estTime ->
                         val uid = auth.currentUser?.uid ?: ""
                         val adminId = loggedInUser?.adminId
                         
@@ -641,6 +679,7 @@ fun AppNavigation() {
                             startLng = sLng,
                             destLat = dLat,
                             destLng = dLng,
+                            estimatedTime = estTime,
                             userId = uid,
                             adminId = adminId,
                             isReached = false,
