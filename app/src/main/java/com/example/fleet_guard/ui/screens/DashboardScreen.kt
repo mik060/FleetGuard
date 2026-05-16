@@ -74,28 +74,19 @@ fun DashboardScreen(
 
     val isAdmin = user?.isAdmin == true
 
-    // Confirmation Dialog for Reached Destination
     var scheduleToConfirm by remember { mutableStateOf<ScheduleData?>(null) }
-    
-    // Admin View Schedule Info Dialog
     var scheduleToShowInfo by remember { mutableStateOf<ScheduleData?>(null) }
 
-    // Calculate real-time counts
     val availableCount = vehicles.count { it.status == "Available" }.toString()
     val inRepairCount = vehicles.count { it.status == "In Repair" }.toString()
 
-    // Helper to check if schedule time has been reached
     val currentTime = Calendar.getInstance().time
     val dateFormat = remember { SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.getDefault()) }
 
-    // Location Tracking for Drivers
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var locationPermissionGranted by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         )
     }
 
@@ -105,14 +96,11 @@ fun DashboardScreen(
         locationPermissionGranted = isGranted
     }
 
-    // Periodically update location if the user is a driver with an active schedule
     val activeSchedule = schedules.find {
         try {
             val scheduleDate = dateFormat.parse("${it.date} ${it.time}")
             scheduleDate != null && currentTime.after(scheduleDate) && !it.isReached && it.status == "APPROVED"
-        } catch (e: Exception) {
-            false
-        }
+        } catch (e: Exception) { false }
     }
 
     LaunchedEffect(locationPermissionGranted, activeSchedule) {
@@ -125,7 +113,7 @@ fun DashboardScreen(
                                 onLocationUpdate(activeSchedule.vehicle, location.latitude, location.longitude)
                             }
                         }
-                    kotlinx.coroutines.delay(10000) // Update every 10 seconds
+                    kotlinx.coroutines.delay(10000)
                 }
             } else {
                 permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -133,7 +121,6 @@ fun DashboardScreen(
         }
     }
 
-    // Reached Destination Confirmation Dialog
     if (scheduleToConfirm != null) {
         AlertDialog(
             onDismissRequest = { scheduleToConfirm = null },
@@ -146,19 +133,14 @@ fun DashboardScreen(
                         scheduleToConfirm = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                ) {
-                    Text("Confirm")
-                }
+                ) { Text("Confirm") }
             },
             dismissButton = {
-                TextButton(onClick = { scheduleToConfirm = null }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { scheduleToConfirm = null }) { Text("Cancel") }
             }
         )
     }
     
-    // Admin Schedule Info Dialog
     if (scheduleToShowInfo != null) {
         AlertDialog(
             onDismissRequest = { scheduleToShowInfo = null },
@@ -172,14 +154,13 @@ fun DashboardScreen(
                     DashboardDetailRow(icon = Icons.Default.LocationOn, label = "Destination", value = info?.destination ?: "")
                     DashboardDetailRow(icon = Icons.Default.CalendarToday, label = "Date", value = info?.date ?: "")
                     DashboardDetailRow(icon = Icons.Default.Schedule, label = "Schedule", value = info?.time ?: "")
+                    DashboardDetailRow(icon = Icons.Default.Route, label = "Distance", value = info?.distance ?: "Not Calculated")
                     DashboardDetailRow(icon = Icons.Default.Timer, label = "Est. Travel Time", value = info?.estimatedTime ?: "")
                     DashboardDetailRow(icon = Icons.Default.Info, label = "Status", value = info?.status ?: "PENDING")
                 }
             },
             confirmButton = {
-                Button(onClick = { scheduleToShowInfo = null }) {
-                    Text("Close")
-                }
+                Button(onClick = { scheduleToShowInfo = null }) { Text("Close") }
             }
         )
     }
@@ -189,31 +170,13 @@ fun DashboardScreen(
             CenterAlignedTopAppBar(
                 title = { 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "FLEETGUARD", 
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 2.sp
-                            ),
-                            color = Color.White
-                        )
-                        Surface(
-                            color = Color.Black.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = if (isAdmin) "ADMIN ACCESS" else "DRIVER ACCESS",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black
-                            )
+                        Text("FLEETGUARD", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp), color = Color.White)
+                        Surface(color = Color.Black.copy(alpha = 0.3f), shape = RoundedCornerShape(4.dp)) {
+                            Text(text = if (isAdmin) "ADMIN ACCESS" else "DRIVER ACCESS", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Black)
                         }
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0xFF0288D1)
-                )
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF0288D1))
             )
         },
         containerColor = lightBlue,
@@ -236,10 +199,7 @@ fun DashboardScreen(
         floatingActionButtonPosition = FabPosition.Center
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
             contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp)
         ) {
@@ -248,47 +208,20 @@ fun DashboardScreen(
 
             if (isAdmin) {
                 item {
-                    Text(
-                        text = "Admin Monitoring Dashboard",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = darkBlue,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
+                    Text("Admin Monitoring Dashboard", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = darkBlue, modifier = Modifier.padding(vertical = 8.dp))
                 }
                 
-                // Status Cards Row
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        ModernStatusCard(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.DirectionsCar,
-                            count = availableCount,
-                            label = "Available",
-                            color = Color(0xFF43A047),
-                            onClick = { onViewVehiclesClick("Available") }
-                        )
-                        ModernStatusCard(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.Build,
-                            count = inRepairCount,
-                            label = "In Repair",
-                            color = accentRed,
-                            onClick = { onViewVehiclesClick("In Repair") }
-                        )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        ModernStatusCard(modifier = Modifier.weight(1f), icon = Icons.Default.DirectionsCar, count = availableCount, label = "Available", color = Color(0xFF43A047), onClick = { onViewVehiclesClick("Available") })
+                        ModernStatusCard(modifier = Modifier.weight(1f), icon = Icons.Default.Build, count = inRepairCount, label = "In Repair", color = accentRed, onClick = { onViewVehiclesClick("In Repair") })
                     }
                 }
 
                 val fleetSchedules = schedules.filter { it.status != "PENDING" }
                 if (fleetSchedules.isNotEmpty()) {
                     item {
-                        ModernDashboardSection(
-                            title = "Active Fleet Schedules",
-                            icon = Icons.AutoMirrored.Filled.EventNote
-                        ) {
+                        ModernDashboardSection(title = "Active Fleet Schedules", icon = Icons.AutoMirrored.Filled.EventNote) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 fleetSchedules.take(10).forEach { item ->
                                     val isScheduledTimeReached = try {
@@ -296,130 +229,27 @@ fun DashboardScreen(
                                         scheduleDate != null && currentTime.after(scheduleDate)
                                     } catch (e: Exception) { false }
                                     val isActive = isScheduledTimeReached && !item.isReached && item.status == "APPROVED"
-
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = if (isActive) Color(0xFFE1F5FE) else Color.White
-                                        ),
-                                        shape = RoundedCornerShape(12.dp),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        "${item.route} -> ${item.destination}", 
-                                                        fontWeight = FontWeight.Bold, 
-                                                        fontSize = 16.sp,
-                                                        color = if (isActive) Color(0xFF0277BD) else Color.Black
-                                                    )
-                                                    Text(item.driver, color = Color.Gray, fontSize = 14.sp)
-                                                    Text(
-                                                        "Vehicle: ${item.vehicle}", 
-                                                        color = if (isActive) Color(0xFF0277BD) else darkBlue, 
-                                                        fontSize = 12.sp, 
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                }
-                                                Column(horizontalAlignment = Alignment.End) {
-                                                    Text(
-                                                        item.time, 
-                                                        fontWeight = FontWeight.Bold, 
-                                                        color = if (isActive) Color(0xFF0277BD) else Color(0xFF004D61)
-                                                    )
-                                                    Text(item.date, fontSize = 12.sp, color = Color.Gray)
-                                                    OutlinedButton(
-                                                        onClick = { scheduleToShowInfo = item }, 
-                                                        modifier = Modifier.padding(top = 4.dp).height(32.dp), 
-                                                        contentPadding = PaddingValues(horizontal = 8.dp), 
-                                                        shape = RoundedCornerShape(8.dp),
-                                                        colors = if (isActive) ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0277BD)) else ButtonDefaults.outlinedButtonColors()
-                                                    ) {
-                                                        Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(14.dp))
-                                                        Spacer(modifier = Modifier.width(4.dp))
-                                                        Text("INFO", fontSize = 10.sp)
-                                                    }
-                                                }
-                                            }
-                                            if (isActive) {
-                                                Surface(
-                                                    modifier = Modifier.padding(top = 8.dp),
-                                                    color = Color(0xFF0277BD).copy(alpha = 0.1f),
-                                                    shape = RoundedCornerShape(4.dp)
-                                                ) {
-                                                    Row(
-                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                                        verticalAlignment = Alignment.CenterVertically
-                                                    ) {
-                                                        Icon(Icons.Default.MotionPhotosAuto, contentDescription = null, tint = Color(0xFF0277BD), modifier = Modifier.size(12.dp))
-                                                        Spacer(modifier = Modifier.width(4.dp))
-                                                        Text("IN PROGRESS", color = Color(0xFF0277BD), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                                    
+                                    ScheduleCard(item = item, isActive = isActive, onInfoClick = { scheduleToShowInfo = item })
                                 }
                             }
                         }
                     }
                 }
             } else if (!isConnected) {
-                // User Dashboard: Not connected yet
                 item {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = if (isPending) Icons.Default.HourglassEmpty else Icons.Default.Handshake,
-                            contentDescription = null,
-                            modifier = Modifier.size(80.dp),
-                            tint = darkBlue.copy(alpha = 0.5f)
-                        )
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(imageVector = if (isPending) Icons.Default.HourglassEmpty else Icons.Default.Handshake, contentDescription = null, modifier = Modifier.size(80.dp), tint = darkBlue.copy(alpha = 0.5f))
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = if (isPending) "Connection Request Pending" else "Welcome to FleetGuard",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = darkBlue
-                        )
-                        Text(
-                            text = if (isPending) 
-                                "Your request has been sent to the Admin. Please wait for their approval to access fleet details." 
-                                else "Get started by connecting to a fleet to manage your schedules and track vehicles.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        Text(text = if (isPending) "Connection Request Pending" else "Welcome to FleetGuard", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = darkBlue)
+                        Text(text = if (isPending) "Your request has been sent to the Admin. Please wait for their approval." else "Get started by connecting to a fleet.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(16.dp))
                     }
                 }
             } else {
-                // User Dashboard: Connected
-                // Status Cards Row
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        ModernStatusCard(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.DirectionsCar,
-                            count = availableCount,
-                            label = "Available",
-                            color = Color(0xFF43A047),
-                            onClick = { onViewVehiclesClick("Available") }
-                        )
-                        ModernStatusCard(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.Build,
-                            count = inRepairCount,
-                            label = "In Repair",
-                            color = accentRed,
-                            onClick = { onViewVehiclesClick("In Repair") }
-                        )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        ModernStatusCard(modifier = Modifier.weight(1f), icon = Icons.Default.DirectionsCar, count = availableCount, label = "Available", color = Color(0xFF43A047), onClick = { onViewVehiclesClick("Available") })
+                        ModernStatusCard(modifier = Modifier.weight(1f), icon = Icons.Default.Build, count = inRepairCount, label = "In Repair", color = accentRed, onClick = { onViewVehiclesClick("In Repair") })
                     }
                 }
 
@@ -428,49 +258,10 @@ fun DashboardScreen(
 
                 if (userPendingSchedules.isNotEmpty()) {
                     item {
-                        ModernDashboardSection(
-                            title = "Pending Approval",
-                            icon = Icons.Default.HourglassEmpty
-                        ) {
+                        ModernDashboardSection(title = "Pending Approval", icon = Icons.Default.HourglassEmpty) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 userPendingSchedules.forEach { item ->
-                                    Card(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp)
-                                            .clickable { scheduleToShowInfo = item },
-                                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                                        shape = RoundedCornerShape(12.dp),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF9A825).copy(alpha = 0.5f))
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text("${item.route} -> ${item.destination}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
-                                                    Text("Vehicle: ${item.vehicle}", color = darkBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                }
-                                                Column(horizontalAlignment = Alignment.End) {
-                                                    Text(item.time, fontWeight = FontWeight.Medium, color = Color(0xFFF9A825))
-                                                    Text(item.date, fontSize = 12.sp, color = Color.Gray)
-                                                }
-                                            }
-                                            Surface(
-                                                modifier = Modifier.padding(top = 8.dp),
-                                                color = Color(0xFFF9A825).copy(alpha = 0.1f),
-                                                shape = RoundedCornerShape(4.dp)
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Icon(Icons.Default.HourglassTop, contentDescription = null, tint = Color(0xFFF9A825), modifier = Modifier.size(12.dp))
-                                                    Spacer(modifier = Modifier.width(4.dp))
-                                                    Text("AWAITING ADMIN APPROVAL", color = Color(0xFFF9A825), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                                }
-                                            }
-                                        }
-                                    }
+                                    ScheduleCard(item = item, isPending = true, onInfoClick = { scheduleToShowInfo = item })
                                 }
                             }
                         }
@@ -479,10 +270,7 @@ fun DashboardScreen(
 
                 if (userApprovedSchedules.isNotEmpty()) {
                     item {
-                        ModernDashboardSection(
-                            title = "Your Recent Schedules",
-                            icon = Icons.AutoMirrored.Filled.EventNote
-                        ) {
+                        ModernDashboardSection(title = "Your Recent Schedules", icon = Icons.AutoMirrored.Filled.EventNote) {
                             Column(modifier = Modifier.padding(8.dp)) {
                                 userApprovedSchedules.take(10).forEach { item ->
                                     val isScheduledTimeReached = try {
@@ -491,34 +279,112 @@ fun DashboardScreen(
                                     } catch (e: Exception) { false }
                                     val isDriving = isScheduledTimeReached && !item.isReached && item.status == "APPROVED"
                                     
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                        colors = CardDefaults.cardColors(containerColor = if (isDriving) Color(0xFFFFEBEE) else Color.White),
-                                        shape = RoundedCornerShape(12.dp),
-                                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                                    ) {
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text("${item.route} -> ${item.destination}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = if (isDriving) Color.Red else Color.Black)
-                                                    Text("Vehicle: ${item.vehicle}", color = darkBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                }
-                                                Column(horizontalAlignment = Alignment.End) {
-                                                    Text(item.time, fontWeight = FontWeight.Medium, color = if (isDriving) Color.Red else Color(0xFF004D61))
-                                                    Text(item.date, fontSize = 12.sp, color = Color.Gray)
-                                                }
-                                            }
-                                            if (isDriving) {
-                                                Spacer(modifier = Modifier.height(8.dp))
-                                                Button(onClick = { scheduleToConfirm = item }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color.Red), shape = RoundedCornerShape(8.dp)) {
-                                                    Text("REACHED DESTINATION", fontWeight = FontWeight.Bold, color = Color.White)
-                                                }
-                                            }
-                                        }
-                                    }
+                                    ScheduleCard(item = item, isDriving = isDriving, onInfoClick = { scheduleToShowInfo = item }, onReachedDestination = { scheduleToConfirm = item })
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ScheduleCard(
+    item: ScheduleData,
+    isActive: Boolean = false,
+    isDriving: Boolean = false,
+    isPending: Boolean = false,
+    onInfoClick: () -> Unit,
+    onReachedDestination: (() -> Unit)? = null
+) {
+    val accentRed = Color(0xFFD32F2F)
+    val darkBlue = Color(0xFF004D61)
+    val primaryColor = when {
+        isDriving -> Color.Red
+        isActive -> Color(0xFF0277BD)
+        isPending -> Color(0xFFF9A825)
+        else -> Color.Black
+    }
+    val cardColor = if (isDriving) Color(0xFFFFEBEE) else if (isActive) Color(0xFFE1F5FE) else Color.White
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        border = if (isPending) androidx.compose.foundation.BorderStroke(1.dp, primaryColor.copy(alpha = 0.5f)) else null
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header Row: Vehicle & Distance
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = primaryColor, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = item.vehicle, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = primaryColor, modifier = Modifier.weight(1f))
+                if (item.distance.isNotEmpty()) {
+                    Surface(color = primaryColor.copy(alpha = 0.1f), shape = RoundedCornerShape(6.dp)) {
+                        Text(text = item.distance, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), color = primaryColor, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Timeline Section: Route to Destination
+            Column {
+                Row(verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Default.RadioButtonChecked, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp).padding(top = 2.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(text = item.route, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                }
+                Box(modifier = Modifier.padding(start = 6.dp).width(1.dp).height(12.dp).background(Color.LightGray))
+                Row(verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = accentRed, modifier = Modifier.size(14.dp).padding(top = 2.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(text = item.destination, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = Color.Black)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Footer Row: Details, Date/Time and INFO button
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(12.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(text = item.driver, fontSize = 12.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                    }
+                    Text(text = "${item.date} | ${item.time}", fontSize = 11.sp, color = Color.DarkGray, fontWeight = FontWeight.Medium)
+                }
+                
+                Button(
+                    onClick = onInfoClick,
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    modifier = Modifier.height(32.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isActive || isDriving) primaryColor else darkBlue)
+                ) {
+                    Text("INFO", fontSize = 10.sp, fontWeight = FontWeight.Black)
+                }
+            }
+
+            if (isDriving && onReachedDestination != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(onClick = onReachedDestination, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = accentRed), shape = RoundedCornerShape(12.dp)) {
+                    Text("REACHED DESTINATION", fontWeight = FontWeight.Black)
+                }
+            }
+            
+            if (isActive || isPending) {
+                Surface(modifier = Modifier.padding(top = 12.dp).fillMaxWidth(), color = primaryColor.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
+                    Row(modifier = Modifier.padding(6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                        Icon(if(isActive) Icons.Default.MotionPhotosAuto else Icons.Default.HourglassTop, contentDescription = null, tint = primaryColor, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if(isActive) "IN PROGRESS" else "AWAITING APPROVAL", color = primaryColor, fontSize = 11.sp, fontWeight = FontWeight.Black)
                     }
                 }
             }

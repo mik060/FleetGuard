@@ -16,6 +16,7 @@ data class ScheduleData(
     val destLat: Double = 14.6091,
     val destLng: Double = 121.0223,
     val estimatedTime: String = "",
+    val distance: String = "", // Added distance information
     val userId: String = "",
     val adminId: String? = null,
     override val timestamp: Long = System.currentTimeMillis(),

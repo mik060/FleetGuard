@@ -44,6 +44,7 @@ import com.example.fleet_guard.ui.theme.Fleet_GuardTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOf
@@ -79,6 +80,7 @@ fun AppNavigation() {
     var loggedInUser by remember { mutableStateOf<User?>(null) }
     var isLoggingIn by remember { mutableStateOf(false) }
 
+    // Authentication State Listener
     DisposableEffect(auth) {
         val listener = FirebaseAuth.AuthStateListener {
             firebaseUser = it.currentUser
@@ -89,13 +91,18 @@ fun AppNavigation() {
         }
     }
     
-    LaunchedEffect(firebaseUser) {
+    // User Profile Listener (Safe Cleanup)
+    DisposableEffect(firebaseUser) {
+        var profileListener: ListenerRegistration? = null
+
         if (firebaseUser != null) {
             val uid = firebaseUser!!.uid
-            firestore.collection("users").document(uid)
+            profileListener = firestore.collection("users").document(uid)
                 .addSnapshotListener { snapshot, e ->
                     if (e != null) {
-                        Toast.makeText(context, "Profile Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        if (auth.currentUser != null) {
+                            Toast.makeText(context, "Profile Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
                         return@addSnapshotListener
                     }
                     if (snapshot != null && snapshot.exists()) {
@@ -117,11 +124,16 @@ fun AppNavigation() {
         } else {
             loggedInUser = null
         }
+
+        onDispose {
+            profileListener?.remove()
+        }
     }
     
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Navigation Logic based on Auth State
     LaunchedEffect(loggedInUser, currentRoute) {
         if (loggedInUser != null) {
             val authRoutes = listOf("login", "registration", "admin_registration")
@@ -131,7 +143,6 @@ fun AppNavigation() {
                 }
             }
         } else if (firebaseUser == null) {
-            // When completely logged out, ensure we are on login screen
             val restrictedRoutes = listOf("dashboard", "trip_summary", "profile", "pending_approvals")
             if (restrictedRoutes.any { currentRoute?.startsWith(it) == true }) {
                 navController.navigate("login") {
@@ -141,6 +152,7 @@ fun AppNavigation() {
         }
     }
     
+    // Real-time Flows for Data
     val schedules by remember(loggedInUser) {
         if (loggedInUser == null) {
             flowOf(emptyList())
@@ -230,7 +242,7 @@ fun AppNavigation() {
                                 User(
                                     fullName = doc.getString("fullName") ?: "",
                                     email = doc.getString("email") ?: "",
-                                    password = doc.id, // Store doc ID in password field temporarily
+                                    password = doc.id,
                                     isAdmin = false,
                                     adminId = doc.getString("adminId"),
                                     connectionStatus = doc.getString("connectionStatus")
@@ -249,7 +261,7 @@ fun AppNavigation() {
             it.id == vehicleIdOrName || "${it.model} (${it.plateNumber})" == vehicleIdOrName 
         }
         
-        if (vehicle != null) {
+        if (vehicle != null && auth.currentUser != null) {
             scope.launch {
                 try {
                     val newPoint = mapOf("lat" to lat, "lng" to lng)
@@ -267,7 +279,6 @@ fun AppNavigation() {
     fun approveSchedule(schedule: ScheduleData) {
         scope.launch {
             try {
-                // Check if vehicle is still available
                 val vehicleToUpdate = vehicles.find { "${it.model} (${it.plateNumber})" == schedule.vehicle }
                 
                 if (vehicleToUpdate == null) {
@@ -315,7 +326,7 @@ fun AppNavigation() {
             )
             if (showBottomBar && loggedInUser != null) {
                 NavigationBar(
-                    containerColor = Color(0xFF0288D1), // Stronger, clearer blue
+                    containerColor = Color(0xFF0288D1),
                     tonalElevation = 8.dp
                 ) {
                     val navItems = mutableListOf(
@@ -383,28 +394,16 @@ fun AppNavigation() {
             startDestination = "login",
             modifier = Modifier.padding(innerPadding),
             enterTransition = { 
-                slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                    animationSpec = tween(400)
-                )
+                slideIntoContainer(towards = AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(400))
             },
             exitTransition = { 
-                slideOutOfContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                    animationSpec = tween(400)
-                )
+                slideOutOfContainer(towards = AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(400))
             },
             popEnterTransition = { 
-                slideIntoContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                    animationSpec = tween(400)
-                )
+                slideIntoContainer(towards = AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(400))
             },
             popExitTransition = { 
-                slideOutOfContainer(
-                    towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                    animationSpec = tween(400)
-                )
+                slideOutOfContainer(towards = AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(400))
             }
         ) {
             composable("login") {
@@ -422,12 +421,8 @@ fun AppNavigation() {
                             }
                         }
                     },
-                    onRegisterClick = {
-                        navController.navigate("registration")
-                    },
-                    onAdminRegisterClick = {
-                        navController.navigate("admin_registration")
-                    }
+                    onRegisterClick = { navController.navigate("registration") },
+                    onAdminRegisterClick = { navController.navigate("admin_registration") }
                 )
             }
             composable("registration") {
@@ -460,9 +455,7 @@ fun AppNavigation() {
                             Toast.makeText(context, "Please check your inputs", Toast.LENGTH_SHORT).show()
                         }
                     },
-                    onBackToLogin = {
-                        navController.popBackStack()
-                    }
+                    onBackToLogin = { navController.popBackStack() }
                 )
             }
             composable("admin_registration") {
@@ -495,9 +488,7 @@ fun AppNavigation() {
                             Toast.makeText(context, "Please check your inputs", Toast.LENGTH_SHORT).show()
                         }
                     },
-                    onBackToLogin = {
-                        navController.popBackStack()
-                    }
+                    onBackToLogin = { navController.popBackStack() }
                 )
             }
             composable("dashboard") {
@@ -510,9 +501,7 @@ fun AppNavigation() {
                             navController.navigate("schedule_form")
                         }
                     },
-                    onTripLogClick = {
-                        navController.navigate("trip_summary")
-                    },
+                    onTripLogClick = { navController.navigate("trip_summary") },
                     onTripClick = { trip ->
                         if (loggedInUser?.isAdmin == true) {
                             navController.navigate("trip_summary?tripId=${trip.id}")
@@ -520,29 +509,36 @@ fun AppNavigation() {
                             navController.navigate("trip_summary")
                         }
                     },
-                    onViewVehiclesClick = { status ->
-                        navController.navigate("available_vehicles/$status")
-                    },
-                    onProfileClick = {
-                        navController.navigate("profile")
-                    },
-                    onSettingsClick = {
-                        navController.navigate("settings")
-                    },
+                    onViewVehiclesClick = { status -> navController.navigate("available_vehicles/$status") },
+                    onProfileClick = { navController.navigate("profile") },
+                    onSettingsClick = { navController.navigate("settings") },
                     onReachedDestination = { schedule ->
                         val uid = auth.currentUser?.uid ?: ""
-                        val distanceResults = FloatArray(1)
-                        Location.distanceBetween(
-                            schedule.startLat, schedule.startLng,
-                            schedule.destLat, schedule.destLng,
-                            distanceResults
-                        )
-                        val actualMileage = String.format("%.2f km", distanceResults[0] / 1000)
-
                         val vehicleToUpdate = vehicles.find { "${it.model} (${it.plateNumber})" == schedule.vehicle }
                         val history = vehicleToUpdate?.locationHistory ?: emptyList()
 
-                        // Record current time as Arrival Time
+                        // ACCURACY FIX: Sum distance between every recorded point for the TRUE mileage
+                        var totalDistanceMeters = 0f
+                        if (history.size > 1) {
+                            for (i in 0 until history.size - 1) {
+                                val p1 = history[i]
+                                val p2 = history[i+1]
+                                val res = FloatArray(1)
+                                Location.distanceBetween(
+                                    p1["lat"] ?: 0.0, p1["lng"] ?: 0.0,
+                                    p2["lat"] ?: 0.0, p2["lng"] ?: 0.0,
+                                    res
+                                )
+                                totalDistanceMeters += res[0]
+                            }
+                        } else {
+                            // Fallback with road factor if history is missing
+                            val res = FloatArray(1)
+                            Location.distanceBetween(schedule.startLat, schedule.startLng, schedule.destLat, schedule.destLng, res)
+                            totalDistanceMeters = res[0] * 1.35f
+                        }
+
+                        val actualMileage = String.format("%.2f km", totalDistanceMeters / 1000)
                         val arrivalTime = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
                         val arrivalDate = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date())
 
@@ -552,7 +548,7 @@ fun AppNavigation() {
                             route = schedule.route,
                             destination = schedule.destination,
                             vehicle = schedule.vehicle,
-                            date = "$arrivalDate at $arrivalTime", // Automatically includes current time
+                            date = "$arrivalDate at $arrivalTime",
                             startLat = schedule.startLat,
                             startLng = schedule.startLng,
                             destLat = schedule.destLat,
@@ -569,23 +565,17 @@ fun AppNavigation() {
                         scope.launch {
                             try {
                                 firestore.collection("trips").document(newTrip.id).set(newTrip).await()
-                                firestore.collection("schedules").document(schedule.id)
-                                    .update("isReached", true).await()
-                                
+                                firestore.collection("schedules").document(schedule.id).update("isReached", true).await()
                                 if (vehicleToUpdate != null) {
-                                    firestore.collection("vehicles").document(vehicleToUpdate.id)
-                                        .update("status", "Returning").await()
+                                    firestore.collection("vehicles").document(vehicleToUpdate.id).update("status", "Returning").await()
                                 }
-                                
-                                Toast.makeText(context, "Trip Logged. Vehicle returning to base.", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Trip Logged: $actualMileage", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Failed to log trip: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
-                    onLocationUpdate = { vehicleName, lat, lng ->
-                        updateVehicleLocation(vehicleName, lat, lng)
-                    },
+                    onLocationUpdate = { name, lat, lng -> updateVehicleLocation(name, lat, lng) },
                     onApproveSchedule = { approveSchedule(it) },
                     onRejectSchedule = { rejectSchedule(it) },
                     pendingUsers = pendingUsers,
@@ -601,11 +591,7 @@ fun AppNavigation() {
                         if (uid != null) {
                             scope.launch {
                                 try {
-                                    firestore.collection("users").document(uid)
-                                        .update(
-                                            "adminId", adminId,
-                                            "connectionStatus", "PENDING"
-                                        ).await()
+                                    firestore.collection("users").document(uid).update("adminId", adminId, "connectionStatus", "PENDING").await()
                                     Toast.makeText(context, "Request sent to Admin!", Toast.LENGTH_SHORT).show()
                                     navController.popBackStack()
                                 } catch (e: Exception) {
@@ -623,8 +609,7 @@ fun AppNavigation() {
                     onAcceptUser = { user ->
                         scope.launch {
                             try {
-                                firestore.collection("users").document(user.password) // doc.id is stored in password
-                                    .update("connectionStatus", "ACCEPTED").await()
+                                firestore.collection("users").document(user.password).update("connectionStatus", "ACCEPTED").await()
                                 Toast.makeText(context, "User accepted!", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -634,12 +619,7 @@ fun AppNavigation() {
                     onRejectUser = { user ->
                         scope.launch {
                             try {
-                                // Clear their admin request on reject
-                                firestore.collection("users").document(user.password)
-                                    .update(
-                                        "adminId", "",
-                                        "connectionStatus", "ACCEPTED" // Back to standalone accepted state
-                                    ).await()
+                                firestore.collection("users").document(user.password).update("adminId", "", "connectionStatus", "ACCEPTED").await()
                                 Toast.makeText(context, "User request rejected.", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -649,45 +629,24 @@ fun AppNavigation() {
                     pendingSchedules = schedules.filter { it.status == "PENDING" },
                     onApproveSchedule = { approveSchedule(it) },
                     onRejectSchedule = { rejectSchedule(it) },
-                    onBackClick = {
-                        navController.popBackStack()
-                    }
+                    onBackClick = { navController.popBackStack() }
                 )
             }
-            composable(
-                route = "trip_summary?tripId={tripId}",
-                arguments = listOf(navArgument("tripId") { 
-                    type = NavType.StringType
-                    nullable = true
-                    defaultValue = null
-                })
-            ) { backStackEntry ->
+            composable(route = "trip_summary?tripId={tripId}", arguments = listOf(navArgument("tripId") { type = NavType.StringType; nullable = true; defaultValue = null })) { backStackEntry ->
                 val tripId = backStackEntry.arguments?.getString("tripId")
                 TripSummaryScreen(
                     user = loggedInUser,
-                    onBackClick = {
-                        navController.popBackStack()
-                    },
+                    onBackClick = { navController.popBackStack() },
                     onCompleteReturn = { trip ->
-                        val vehicleToUpdate = vehicles.find { "${it.model} (${it.plateNumber})" == trip.vehicle }
-                        if (vehicleToUpdate != null) {
+                        val v = vehicles.find { "${it.model} (${it.plateNumber})" == trip.vehicle }
+                        if (v != null) {
                             scope.launch {
                                 try {
-                                    firestore.collection("vehicles").document(vehicleToUpdate.id)
-                                        .update(
-                                            "status", "Available",
-                                            "locationHistory", emptyList<Map<String, Double>>()
-                                        ).await()
-                                    
-                                    firestore.collection("trips").document(trip.id)
-                                        .update(
-                                            "status", "Returned",
-                                            "returnTimestamp", System.currentTimeMillis()
-                                        ).await()
-                                    
+                                    firestore.collection("vehicles").document(v.id).update("status", "Available", "locationHistory", emptyList<Map<String, Double>>()).await()
+                                    firestore.collection("trips").document(trip.id).update("status", "Returned", "returnTimestamp", System.currentTimeMillis()).await()
                                     Toast.makeText(context, "Vehicle is now Available", Toast.LENGTH_SHORT).show()
                                 } catch (e: Exception) {
-                                    Toast.makeText(context, "Failed to complete return: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -698,131 +657,75 @@ fun AppNavigation() {
                 )
             }
             composable("schedule_form") {
-                val availableVehicleList = vehicles.filter { it.status == "Available" }.map { "${it.model} (${it.plateNumber})" }
+                val avail = vehicles.filter { it.status == "Available" }.map { "${it.model} (${it.plateNumber})" }
                 DriverScheduleFormScreen(
                     user = loggedInUser,
-                    availableVehicles = availableVehicleList,
-                    onSaveClick = { driver, route, destination, date, time, vehicle, reason, sLat, sLng, dLat, dLng, estTime ->
+                    availableVehicles = avail,
+                    onSaveClick = { driver, route, dest, date, time, veh, reason, sLat, sLng, dLat, dLng, estTime, dist ->
                         val uid = auth.currentUser?.uid ?: ""
-                        val adminId = loggedInUser?.adminId
-                        
-                        val newSchedule = ScheduleData(
+                        val new = ScheduleData(
                             id = UUID.randomUUID().toString(),
-                            date = date,
-                            route = route,
-                            destination = destination,
-                            driver = driver,
-                            time = time,
-                            vehicle = vehicle,
-                            reason = reason,
-                            startLat = sLat,
-                            startLng = sLng,
-                            destLat = dLat,
-                            destLng = dLng,
-                            estimatedTime = estTime,
-                            userId = uid,
-                            adminId = adminId,
-                            isReached = false,
-                            status = "PENDING",
-                            timestamp = System.currentTimeMillis()
+                            date = date, route = route, destination = dest, driver = driver, time = time, vehicle = veh,
+                            reason = reason, startLat = sLat, startLng = sLng, destLat = dLat, destLng = dLng,
+                            estimatedTime = estTime, distance = dist, userId = uid, adminId = loggedInUser?.adminId, isReached = false,
+                            status = "PENDING", timestamp = System.currentTimeMillis()
                         )
-                        
                         scope.launch {
                             try {
-                                firestore.collection("schedules").document(newSchedule.id).set(newSchedule).await()
-                                Toast.makeText(context, "Schedule submitted for approval", Toast.LENGTH_SHORT).show()
+                                firestore.collection("schedules").document(new.id).set(new).await()
+                                Toast.makeText(context, "Schedule submitted", Toast.LENGTH_SHORT).show()
                                 navController.popBackStack()
                             } catch (e: Exception) {
-                                Toast.makeText(context, "Failed to save schedule: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
-                    onBackClick = {
-                        navController.popBackStack()
-                    }
+                    onBackClick = { navController.popBackStack() }
                 )
             }
-            composable(
-                "available_vehicles/{status}",
-                arguments = listOf(navArgument("status") { type = NavType.StringType })
-            ) { backStackEntry ->
+            composable("available_vehicles/{status}", arguments = listOf(navArgument("status") { type = NavType.StringType })) { backStackEntry ->
                 val status = backStackEntry.arguments?.getString("status") ?: "Available"
                 AvailableVehiclesScreen(
                     user = loggedInUser,
                     statusFilter = status,
                     vehicles = vehicles,
-                    onBackClick = {
-                        navController.popBackStack()
-                    },
-                    onVehicleClick = { vehicle ->
-                        if (loggedInUser?.isAdmin == true) {
-                            navController.navigate("vehicle_map/${vehicle.id}")
-                        }
-                    },
-                    onAddVehicle = { newVehicle ->
+                    onBackClick = { navController.popBackStack() },
+                    onVehicleClick = { if (loggedInUser?.isAdmin == true) navController.navigate("vehicle_map/${it.id}") },
+                    onAddVehicle = { v ->
                         scope.launch {
                             try {
-                                firestore.collection("vehicles").document(newVehicle.id).set(newVehicle).await()
-                                Toast.makeText(context, "Vehicle Added to Fleet", Toast.LENGTH_SHORT).show()
+                                firestore.collection("vehicles").document(v.id).set(v).await()
+                                Toast.makeText(context, "Vehicle Added", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                Toast.makeText(context, "Failed to add vehicle: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
-                    onDeleteVehicle = { vehicle ->
+                    onDeleteVehicle = { v ->
                         scope.launch {
                             try {
-                                firestore.collection("vehicles").document(vehicle.id).delete().await()
-                                Toast.makeText(context, "Vehicle removed from fleet", Toast.LENGTH_SHORT).show()
+                                firestore.collection("vehicles").document(v.id).delete().await()
+                                Toast.makeText(context, "Vehicle Removed", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                Toast.makeText(context, "Failed to delete: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
                 )
             }
-            composable(
-                "vehicle_map/{vehicleId}",
-                arguments = listOf(navArgument("vehicleId") { type = NavType.StringType })
-            ) { backStackEntry ->
-                val vehicleId = backStackEntry.arguments?.getString("vehicleId")
-                val vehicle = vehicles.find { it.id == vehicleId }
-                if (vehicle != null) {
-                    val activeSchedule = schedules.find { 
-                        it.vehicle == "${vehicle.model} (${vehicle.plateNumber})" && 
-                        it.status == "APPROVED" && !it.isReached 
-                    }
-                    VehicleMapScreen(
-                        vehicle = vehicle,
-                        activeSchedule = activeSchedule,
-                        onBackClick = { navController.popBackStack() }
-                    )
+            composable("vehicle_map/{vehicleId}", arguments = listOf(navArgument("vehicleId") { type = NavType.StringType })) { backStackEntry ->
+                val vid = backStackEntry.arguments?.getString("vehicleId")
+                val v = vehicles.find { it.id == vid }
+                if (v != null) {
+                    val active = schedules.find { it.vehicle == "${v.model} (${v.plateNumber})" && it.status == "APPROVED" && !it.isReached }
+                    VehicleMapScreen(vehicle = v, activeSchedule = active, onBackClick = { navController.popBackStack() })
                 }
             }
             composable("profile") {
-                ProfileScreen(
-                    user = loggedInUser,
-                    onLogoutClick = {
-                        auth.signOut()
-                        navController.navigate("login") {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    },
-                    onSettingsClick = {
-                        navController.navigate("settings")
-                    },
-                    onBackClick = {
-                        navController.popBackStack()
-                    }
-                )
+                ProfileScreen(user = loggedInUser, onLogoutClick = { auth.signOut(); navController.navigate("login") { popUpTo(0) { inclusive = true } } }, onSettingsClick = { navController.navigate("settings") }, onBackClick = { navController.popBackStack() })
             }
             composable("settings") {
-                SettingsScreen(
-                    user = loggedInUser,
-                    onBackClick = {
-                        navController.popBackStack()
-                    }
-                )
+                SettingsScreen(user = loggedInUser, onBackClick = { navController.popBackStack() })
             }
         }
     }
