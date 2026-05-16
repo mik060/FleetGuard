@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -223,7 +224,8 @@ fun DashboardScreen(
                     item {
                         ModernDashboardSection(title = "Active Fleet Schedules", icon = Icons.AutoMirrored.Filled.EventNote) {
                             Column(modifier = Modifier.padding(8.dp)) {
-                                fleetSchedules.take(10).forEach { item ->
+                                // Limit to 5 recent schedules
+                                fleetSchedules.take(5).forEach { item ->
                                     val isScheduledTimeReached = try {
                                         val scheduleDate = dateFormat.parse("${item.date} ${item.time}")
                                         scheduleDate != null && currentTime.after(scheduleDate)
@@ -231,6 +233,18 @@ fun DashboardScreen(
                                     val isActive = isScheduledTimeReached && !item.isReached && item.status == "APPROVED"
                                     
                                     ScheduleCard(item = item, isActive = isActive, onInfoClick = { scheduleToShowInfo = item })
+                                }
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedButton(
+                                    onClick = onTripLogClick,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = darkBlue)
+                                ) {
+                                    Text("VIEW ALL RECORDS", fontWeight = FontWeight.Black)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
@@ -272,7 +286,8 @@ fun DashboardScreen(
                     item {
                         ModernDashboardSection(title = "Your Recent Schedules", icon = Icons.AutoMirrored.Filled.EventNote) {
                             Column(modifier = Modifier.padding(8.dp)) {
-                                userApprovedSchedules.take(10).forEach { item ->
+                                // Limit to 5 recent schedules
+                                userApprovedSchedules.take(5).forEach { item ->
                                     val isScheduledTimeReached = try {
                                         val scheduleDate = dateFormat.parse("${item.date} ${item.time}")
                                         scheduleDate != null && currentTime.after(scheduleDate)
@@ -280,6 +295,18 @@ fun DashboardScreen(
                                     val isDriving = isScheduledTimeReached && !item.isReached && item.status == "APPROVED"
                                     
                                     ScheduleCard(item = item, isDriving = isDriving, onInfoClick = { scheduleToShowInfo = item }, onReachedDestination = { scheduleToConfirm = item })
+                                }
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedButton(
+                                    onClick = onTripLogClick,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = darkBlue)
+                                ) {
+                                    Text("VIEW ALL RECORDS", fontWeight = FontWeight.Black)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
