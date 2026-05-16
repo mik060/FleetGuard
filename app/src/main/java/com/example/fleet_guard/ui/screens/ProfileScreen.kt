@@ -25,8 +25,7 @@ import com.example.fleet_guard.ui.theme.Fleet_GuardTheme
 fun ProfileScreen(
     user: User?,
     onBackClick: () -> Unit = {},
-    onLogoutClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onLogoutClick: () -> Unit = {}
 ) {
     val darkBlue = Color(0xFF004D61)
     val lightBlue = Color(0xFFE0F7FA)
@@ -65,11 +64,6 @@ fun ProfileScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color(0xFF0288D1))
@@ -136,7 +130,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Logout Button at the bottom (above navigation bar)
+            // Logout Button at the bottom
             Button(
                 onClick = { showLogoutConfirmation = true },
                 modifier = Modifier

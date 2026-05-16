@@ -511,7 +511,6 @@ fun AppNavigation() {
                     },
                     onViewVehiclesClick = { status -> navController.navigate("available_vehicles/$status") },
                     onProfileClick = { navController.navigate("profile") },
-                    onSettingsClick = { navController.navigate("settings") },
                     onReachedDestination = { schedule ->
                         val uid = auth.currentUser?.uid ?: ""
                         val vehicleToUpdate = vehicles.find { "${it.model} (${it.plateNumber})" == schedule.vehicle }
@@ -722,10 +721,14 @@ fun AppNavigation() {
                 }
             }
             composable("profile") {
-                ProfileScreen(user = loggedInUser, onLogoutClick = { auth.signOut(); navController.navigate("login") { popUpTo(0) { inclusive = true } } }, onSettingsClick = { navController.navigate("settings") }, onBackClick = { navController.popBackStack() })
-            }
-            composable("settings") {
-                SettingsScreen(user = loggedInUser, onBackClick = { navController.popBackStack() })
+                ProfileScreen(
+                    user = loggedInUser,
+                    onLogoutClick = {
+                        auth.signOut()
+                        navController.navigate("login") { popUpTo(0) { inclusive = true } }
+                    },
+                    onBackClick = { navController.popBackStack() }
+                )
             }
         }
     }
